@@ -22,12 +22,16 @@ import android.os.IBinder
 import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import io.github.hwanyu365.argos.MainActivity
 import io.github.hwanyu365.argos.R
 import io.github.hwanyu365.argos.data.PkgKey
 import io.github.hwanyu365.argos.data.Prefs
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * 자녀 기기 감시 루프 (FR#8, FR#12, NFR#6, NFR#7).
@@ -45,6 +49,8 @@ class MonitorService : Service() {
     private var lastSentAt = 0L
 
     // 감시 스레드와 Firebase 콜백(메인 스레드)이 함께 쓴다.
+    private var lastDailyAt = 0L
+    private var lastDailyDate: LocalDate? = null
     private val labeledApps = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     // 화면이 꺼지면 tick 이 60초 간격이 되므로, 켜지는 즉시 3초 폴링으로 되돌린다 (NFR#2).
@@ -114,6 +120,56 @@ class MonitorService : Service() {
             lastLive = live
             lastSentAt = now
         }
+        val today = LocalDate.now()
+        if (now - lastDailyAt >= DAILY_MS || today != lastDailyDate) {
+            lastDailyAt = now
+            lastDailyDate = today
+            uploadDaily(today, now)
+        }
+    }
+
+    /**
+     * FR#13: 마지막으로 올린 날부터 오늘까지 일별 합계를 다시 계산해 덮어쓴다 (A#3).
+     * 진행 중 세션과 PiP 는 지금 시각까지 더한다 (A#2). 하루 한 번 보관 기간이 지난 기록을 지운다 (FR#14).
+     */
+    private fun uploadDaily(today: LocalDate, now: Long) {
+        val zone = ZoneId.systemDefault()
+        val cutoff = DailyAggregator.retentionCutoff(today)
+        store.deleteEndedBefore(cutoff.atStartOfDay(zone).toInstant().toEpochMilli())
+        val fid = prefs.familyId ?: return
+        if (FirebaseApp.getApps(this).isEmpty()) return
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val earliest = store.earliestStart()?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+        val days = DailyAggregator.uploadDays(prefs.dailyUploaded, earliest, today)
+        val from = days.first().atStartOfDay(zone).toInstant().toEpochMilli()
+        val open = listOfNotNull(builder.current, builder.pip?.open).map { Session(it.pkg, it.start, now) }
+        val agg = DailyAggregator.aggregate(store.endingAfter(from) + open, zone)
+        val update = mutableMapOf<String, Any?>()
+        days.forEach { d ->
+            val day = agg[d]
+            // A#3: 날짜 노드 전체를 덮어써 재시도·중복 업로드에도 값이 일정하다.
+            update["children/$uid/daily/$d"] = day?.apps?.mapKeys { PkgKey.encode(it.key) }?.takeIf { it.isNotEmpty() }
+            update["children/$uid/dailyTotal/$d"] = day?.totalSec?.takeIf { it > 0 }
+        }
+        // 부모 기기에 없는 앱도 이름을 보여주기 위해 집계에 나온 앱의 이름을 공유한다 (R#6).
+        agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }.forEach { pkg ->
+            update["apps/${PkgKey.encode(pkg)}"] = mapOf("label" to device.label(pkg).take(100))
+        }
+        val family = FirebaseDatabase.getInstance().getReference("families/$fid")
+        family.updateChildren(update)
+            .addOnSuccessListener { prefs.dailyUploaded = today }
+            .addOnFailureListener { Log.w(TAG, "daily upload failed", it) }
+        pruneRemote(family.child("children/$uid"), cutoff)
+    }
+
+    /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
+    private fun pruneRemote(child: DatabaseReference, cutoff: LocalDate) {
+        listOf("daily", "dailyTotal").forEach { node ->
+            child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap ->
+                val old = snap.children.mapNotNull { it.key }.associate { "$node/$it" to null }
+                if (old.isNotEmpty()) child.updateChildren(old)
+            }
+        }
     }
 
     /** 페어링 전이거나 Firebase 미설정이면 로컬 수집만 한다. */
@@ -168,6 +224,7 @@ class MonitorService : Service() {
         private const val CHANNEL = "monitor"
         private const val NOTIFICATION_ID = 1
         private const val BACKFILL_MS = 24 * 60 * 60_000L
+        private const val DAILY_MS = 15 * 60_000L
         private const val WATCHDOG_JOB = 1
         private const val WATCHDOG_MS = 15 * 60_000L
 

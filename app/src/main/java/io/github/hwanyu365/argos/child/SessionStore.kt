@@ -18,6 +18,21 @@ class SessionStore(context: Context) : SQLiteOpenHelper(context, NAME, null, 1) 
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
+    /** [from] 이후에 끝난 세션. 일별 집계는 이 구간을 자정 기준으로 다시 나눈다. */
+    fun endingAfter(from: Long): List<Session> = readableDatabase.rawQuery(
+        "SELECT pkg, start, `end`, title, url FROM session WHERE `end` > ? ORDER BY start",
+        arrayOf(from.toString())
+    ).use { c -> buildList { while (c.moveToNext()) add(Session(c.getString(0), c.getLong(1), c.getLong(2), c.getString(3), c.getString(4))) } }
+
+    fun earliestStart(): Long? = readableDatabase.rawQuery("SELECT MIN(start) FROM session", null).use { c ->
+        if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null
+    }
+
+    /** FR#14: 보관 기간이 지난 세션을 지운다. */
+    fun deleteEndedBefore(cutoff: Long) {
+        writableDatabase.delete("session", "`end` < ?", arrayOf(cutoff.toString()))
+    }
+
     fun insert(sessions: List<Session>) {
         if (sessions.isEmpty()) return
         writableDatabase.run {
