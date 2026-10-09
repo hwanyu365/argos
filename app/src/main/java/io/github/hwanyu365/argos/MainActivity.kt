@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import io.github.hwanyu365.argos.child.MonitorService
 import io.github.hwanyu365.argos.ui.ArgosApp
 import io.github.hwanyu365.argos.ui.theme.ArgosTheme
 
@@ -15,6 +16,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        MonitorService.resumeFromUi(this)
         setContent {
             ArgosTheme {
                 Surface(Modifier.fillMaxSize()) {

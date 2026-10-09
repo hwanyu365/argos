@@ -59,4 +59,8 @@
     <string name="unit_min">분</string>
     <string name="unit_hour">시간</string>
     <string name="scan_failed">QR 을 읽지 못했습니다. 코드를 직접 입력해 주세요.</string>
+    <string name="liveness_ok">정상</string>
+    <string name="liveness_delayed">확인 지연</string>
+    <string name="liveness_stopped">감시 중단</string>
+    <string name="last_seen">마지막: %1$s</string>
 </resources>
