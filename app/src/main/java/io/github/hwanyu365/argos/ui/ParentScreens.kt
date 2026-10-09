@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -215,9 +216,18 @@ private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> U
         dismissButton = { TextButton(onClick = ::issue) { Text(stringResource(R.string.reissue)) } },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SingleChoiceSegmentedButtonRow {
+                // 다이얼로그 폭이 좁아 체크 아이콘까지 그리면 글자가 줄바꿈되며 버튼이 타원형으로 늘어난다 → 아이콘 없이 한 줄로.
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     listOf(Role.CHILD to R.string.invite_child, Role.PARENT to R.string.invite_parent).forEachIndexed { i, (r, label) ->
-                        SegmentedButton(selected = role == r, onClick = { role = r }, shape = SegmentedButtonDefaults.itemShape(i, 2)) { Text(stringResource(label)) }
+                        SegmentedButton(
+                            selected = role == r,
+                            onClick = { role = r },
+                            shape = SegmentedButtonDefaults.itemShape(i, 2),
+                            icon = {}
+                        ) {
+                            // 체크 아이콘이 없으므로 색에만 기대지 않게 선택된 쪽을 굵게도 표시한다 (NFR#9).
+                            Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (role == r) FontWeight.Bold else FontWeight.Normal)
+                        }
                     }
                 }
                 val c = shown?.first
