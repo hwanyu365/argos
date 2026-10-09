@@ -284,6 +284,8 @@ describe("TC#52 일별 사용 시간 형식 검증", () => {
     await assertFails(base().child("dailyShorts/2026-10-10").set(90001));
     await assertFails(base().child("dailyShorts/2026-1-1").set(1));
     await assertFails(base().child("dailyShorts/2026-10-10").set(1.5));
+    await assertFails(base().child("dailyShorts/2026-10-10").set(-1));
+    await assertFails(base().child("dailyShorts/2026-10-10").set("1"));
     await assertFails(base().child("dailyTotal/2026-10-10").set(1.5));
   });
 

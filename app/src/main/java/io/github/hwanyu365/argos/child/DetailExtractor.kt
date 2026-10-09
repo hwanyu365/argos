@@ -65,6 +65,9 @@ object DetailExtractor {
         return if (kept.isEmpty()) path else "$path?${kept.joinToString("&")}"
     }
 
+    /** X#1b 가 붙인 Shorts 표시인지. 일반 영상 제목이 우연히 'Shorts' 로 시작하는 경우와 구분한다. */
+    fun isShortsTitle(title: String?): Boolean = title == SHORTS || title?.startsWith("$SHORTS · ") == true
+
     /** X#1b: 미디어 세션 제목이 있으면 그것을, 없으면 화면에서 읽은 제목을 쓴다. 브라우저 주소는 함께 남긴다 (웹 영상 재생 중에도 주소가 보이게). */
     fun combine(mediaTitle: String?, screen: Detail?): Detail = Detail(title = mediaTitle ?: screen?.title, url = screen?.url)
 

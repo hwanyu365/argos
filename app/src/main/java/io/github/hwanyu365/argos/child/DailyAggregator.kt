@@ -18,7 +18,7 @@ object DailyAggregator {
         return pieces.mapValues { (_, list) ->
             val apps = list.groupBy({ it.first.second }, { it.first.third.last - it.first.third.first }).mapValues { it.value.sum() / 1000 }
             // A#5: YouTube 앱에서 Shorts 로 본 시간 (X#1b 제목 표시로 구분). 브라우저의 Shorts 는 주소로만 보이므로 세지 않는다.
-            val shorts = list.filter { (_, s) -> s.pkg == DetailExtractor.YOUTUBE && s.title?.startsWith(DetailExtractor.SHORTS) == true }.sumOf { it.first.third.last - it.first.third.first } / 1000
+            val shorts = list.filter { (_, s) -> s.pkg == DetailExtractor.YOUTUBE && DetailExtractor.isShortsTitle(s.title) }.sumOf { it.first.third.last - it.first.third.first } / 1000
             Day(apps, union(list.map { it.first.third }) / 1000, shorts)
         }
     }

@@ -47,12 +47,14 @@ class DailyAggregatorTest {
                 Session(yt, t(10, 9, 0), t(10, 9, 10), title = "Shorts · 고양이"),
                 Session(yt, t(10, 9, 10), t(10, 9, 30), title = "일반 영상"),
                 Session(yt, t(10, 21, 0), t(10, 21, 5), title = "Shorts"),
-                Session("com.android.chrome", t(10, 22, 0), t(10, 22, 5), title = "Shorts 이야기", url = "m.youtube.com/shorts/x")
+                Session("com.android.chrome", t(10, 22, 0), t(10, 22, 5), title = "Shorts 이야기", url = "m.youtube.com/shorts/x"),
+                // 미디어 세션이 준 일반 영상 제목이 우연히 'Shorts' 로 시작하는 경우는 Shorts 가 아니다.
+                Session(yt, t(10, 23, 0), t(10, 23, 10), title = "Shorts 만드는 법")
             ),
             kst
         )
         val d = days.getValue(day(10))
-        assertEquals(2_100L, d.apps[yt])
+        assertEquals(2_700L, d.apps[yt])
         assertEquals(900L, d.shortsSec)
     }
 
