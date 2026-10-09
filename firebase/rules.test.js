@@ -251,6 +251,52 @@ describe("TC#46 live 형식 검증", () => {
   });
 });
 
+describe("TC#52 일별 사용 시간 형식 검증", () => {
+  const base = () => db("kidX").ref(`families/${FID}/children/kidX`);
+
+  test("날짜별 앱 사용 초와 하루 총합을 쓸 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(base().child("daily/2026-10-10").set({ "com,google,android,youtube": 3600, "com,kakao,talk": 600 }));
+    await assertSucceeds(base().child("dailyTotal/2026-10-10").set(3900));
+  });
+
+  test("날짜 키가 yyyy-MM-dd 가 아니면 거부한다", async () => {
+    await seed(withKids());
+    await assertFails(base().child("daily/20261010").set({ a: 1 }));
+    await assertFails(base().child("daily/2026-10-10").set(5));
+    await assertFails(base().child("dailyTotal/2026-1-1").set(1));
+  });
+
+  test("앱 키는 패키지 키 형식(영숫자·밑줄·쉼표)만 허용한다", async () => {
+    await seed(withKids());
+    await assertFails(base().child("daily/2026-10-10").set({ "a b": 1 }));
+    await assertFails(base().child("daily/2026-10-10").set({ ["x".repeat(256)]: 1 }));
+  });
+
+  test("값은 0~90000 초의 정수만 허용한다 (서머타임 25시간 날 포함)", async () => {
+    await seed(withKids());
+    await assertFails(base().child("daily/2026-10-10").set({ a: -1 }));
+    await assertFails(base().child("daily/2026-10-10").set({ a: 90001 }));
+    await assertSucceeds(base().child("daily/2026-10-10").set({ a: 90000 }));
+    await assertFails(base().child("daily/2026-10-10").set({ a: "1" }));
+    await assertFails(base().child("dailyTotal/2026-10-10").set(90001));
+    await assertFails(base().child("dailyTotal/2026-10-10").set(1.5));
+  });
+
+  test("자녀는 보관 기간이 지난 자기 일별 기록을 지울 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(base().child("daily/2026-10-10").set({ a: 1 }));
+    await assertSucceeds(base().update({ "daily/2026-10-10": null, "dailyTotal/2026-10-10": null }));
+    await assertFails(db("kidY").ref(`families/${FID}/children/kidX/daily/2026-10-10`).remove());
+  });
+
+  test("부모는 일별 기록을 읽을 수 있고 쓸 수 없다", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("parent1").ref(`families/${FID}/children/kidX/daily`).get());
+    await assertFails(db("parent1").ref(`families/${FID}/children/kidX/daily/2026-10-10`).set({ a: 1 }));
+  });
+});
+
 describe("TC#10 기기 제거", () => {
   test("부모가 자녀를 제거하면 이후 그 자녀는 쓰기·읽기가 거부된다", async () => {
     await seed(withKids());

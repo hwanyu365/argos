@@ -111,6 +111,13 @@ class SessionBuilder(
     }
 
     private fun onStopped(pkg: String?, cls: String?, ts: Long, closed: MutableList<Session>) {
+        // S#10: 멈춘 현재 화면이 다른 앱이 뜨지 않은 채 숨겨졌다 → 잠금 화면·AOD 처럼 이벤트를 남기지 않는 화면으로 갔다.
+        // 다음 이벤트까지 열어 두면 그동안이 사용 시간으로 부풀려지므로 멈춘 시각에 닫는다.
+        val pz = paused
+        if (pkg == current?.pkg && pz != null && (pz.second == null || cls == null || cls == pz.second)) {
+            close(pz.first, closed)
+            return
+        }
         val p = pip ?: return
         // PiP 앱의 다른 화면이 숨겨지는 것은 PiP 종료가 아니다.
         if (pkg != p.open.pkg || (p.cls != null && cls != null && cls != p.cls)) return

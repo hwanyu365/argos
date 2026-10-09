@@ -34,6 +34,11 @@ class Prefs(context: Context) {
     /** FR#1 초기화: 역할·가족·수집 커서를 모두 지운다. */
     fun clear() = sp.edit { clear() }
 
+    /** 일별 집계를 마지막으로 올린 날. 그날부터 오늘까지 다시 올린다 (A#3). */
+    var dailyUploaded: java.time.LocalDate?
+        get() = sp.getString("dailyUploaded", null)?.let(java.time.LocalDate::parse)
+        set(v) = sp.edit { putString("dailyUploaded", v?.toString()) }
+
     var lastEventTs: Long
         get() = sp.getLong("lastEventTs", 0)
         set(v) = sp.edit { putLong("lastEventTs", v) }
