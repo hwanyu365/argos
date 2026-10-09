@@ -55,13 +55,14 @@ npm --prefix firebase test # 보안 규칙 (Firebase Emulator)
 ## GIT
 
 - 티켓: GitHub Issues. 표기 `GH-{번호}`
-- 브랜치: `{feat|bugfix|chore}/GH-{번호}` / 워크트리: `../argos-GH-{번호}`
-- 커밋 메시지: 전역 규칙과 같고, `[JIRA]` 자리에 `[ISSUE]` 를 쓴다
+- 브랜치: `{feat|bugfix|chore}/GH-{번호}`, 하위 이슈는 `{feat|bugfix|chore}/GH-{상위}-{하위}`
+- 워크트리: `../argos-GH-{번호}` 또는 `../argos-GH-{상위}-{하위}`
+- 커밋 메시지: 전역 규칙과 같고, `[JIRA]` 자리에 `[ISSUE]` 를 쓴다. 하위 이슈는 1행에 `[GH-{상위}][GH-{하위}]`, `[ISSUE]` 는 상위 이슈 URL
 
   ```
-  feat:[GH-12] 부모 화면에 영상 제목 표시
+  feat:[GH-15][GH-16] 보안 규칙과 페어링 기초 구현
 
-  [ISSUE] https://github.com/hwanyu365/argos/issues/12
+  [ISSUE] https://github.com/hwanyu365/argos/issues/15
   [DESC]
   [요구사항]
   - ...
@@ -69,11 +70,21 @@ npm --prefix firebase test # 보안 규칙 (Firebase Emulator)
   - ...
   ```
 - PR 은 draft 로 생성하고 `.github/pull_request_template.md` 를 채운다
-- 이 프로젝트는 agent 자동화 개발이다 → 전역 규칙(커밋·PR 은 지시 시에만)을 대체한다
-  - 하위 이슈가 끝나면 묻지 않고 커밋 → draft PR → CI·Claude 리뷰 반영 → ready → merge
-  - 보고는 상위 이슈(UC) 단위로 한다
-  - 예외(먼저 묻는다): 스펙에 없는 결정, 비용 발생, Firebase·GCP 콘솔·IAM·Secrets 변경, 실사용 기기의 데이터 삭제
-  - `database.rules.json` 변경은 스펙 §4.3 을 구현하는 범위면 예외가 아니다. 대신 규칙 조건마다 `rules.test.js` 테스트를 두고, 조건을 지우면 테스트가 실패하는지 확인한 뒤 merge 한다
 - `main` 은 보호 브랜치다 (CI `android`·`rules` 필수, PR 로만 merge, 관리자 포함)
-- 하위 이슈 브랜치는 `feat/GH-{상위}-{하위}`, 커밋 1행은 `feat:[GH-{상위}][GH-{하위}] ...`
-- `database.rules.json` 이 main 에 merge 되면 실제 Firebase 프로젝트에 자동 배포된다
+
+### agent 자동화 흐름
+
+이 프로젝트는 agent 자동화 개발이다. 저장소 소유자 지시(#20)로 전역 규칙("커밋·PR 은 지시할 때만")을 대체한다.
+
+- 하위 이슈가 끝나면 묻지 않고 커밋 → draft PR → CI·Claude 리뷰 반영 → ready → merge
+- 보고는 상위 이슈(UC) 단위로 한다
+- 먼저 묻는 예외
+  - 스펙에 없는 결정
+  - 비용 발생
+  - Firebase·GCP 콘솔, IAM, Secrets 변경
+  - 실사용 기기의 데이터 삭제
+  - 이 흐름 자체(이 절)를 바꾸는 변경 → 소유자가 PR 을 직접 approve·merge 한다
+- `database.rules.json`
+  - main 에 merge 되면 실제 Firebase 프로젝트에 자동 배포된다 (콘솔 변경 예외에 해당하지 않음)
+  - 그래서 규칙 조건마다 `firebase/rules.test.js` 테스트를 두고, 조건을 하나씩 지우면 테스트가 실패하는지(mutation) 확인한다
+  - 확인 결과(지운 조건 → 실패한 테스트)를 PR 본문 "규칙 mutation 확인" 항목에 남긴다
