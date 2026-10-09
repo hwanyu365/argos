@@ -114,6 +114,22 @@ class SessionBuilderTest {
     }
 
     @Test
+    fun `TC#17 소급 범위보다 오래 끊겼으면 끝을 알 수 없는 진행 중 세션은 버린다`() {
+        val restored = SessionBuilder(excluded = emptySet(), lastEventTs = 10_000, current = OpenSession("B", 10_000))
+        restored.skipGap(from = 50_000)
+        assertNull(restored.current)
+        assertEquals(50_000, restored.lastEventTs)
+        assertEquals(emptyList<Session>(), restored.feed(listOf(ev(RESUMED, "C", 60_000))))
+    }
+
+    @Test
+    fun `TC#17 소급 범위 안이면 진행 중 세션을 유지한다`() {
+        val restored = SessionBuilder(excluded = emptySet(), lastEventTs = 10_000, current = OpenSession("B", 10_000))
+        restored.skipGap(from = 5_000)
+        assertEquals(OpenSession("B", 10_000), restored.current)
+    }
+
+    @Test
     fun `TC#17 재시작 시 진행 중 세션과 마지막 시각을 복원해 이어서 만든다`() {
         val restored = SessionBuilder(excluded = emptySet(), lastEventTs = 10_000, current = OpenSession("B", 10_000))
         val closed = restored.feed(listOf(ev(RESUMED, "C", 30_000)))

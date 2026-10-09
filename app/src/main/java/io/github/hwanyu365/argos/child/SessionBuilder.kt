@@ -42,6 +42,17 @@ class SessionBuilder(
         return closed
     }
 
+    /**
+     * S#8: [from] 이전 이벤트는 읽을 수 없다(OS 보관 범위 밖). 그 사이에 진행 중 세션이 언제 끝났는지 알 수 없으므로
+     * 이어 붙이면 사용 시간이 부풀려진다 → 버리고 [from] 부터 다시 시작한다.
+     */
+    fun skipGap(from: Long) {
+        if (lastEventTs >= from) return
+        current = null
+        pausedAt = null
+        lastEventTs = from
+    }
+
     /** S#7: 상세가 다른 값으로 바뀌면 나눈다. 상세가 없던 세션에 처음 붙는 값은 늦게 도착한 메타데이터라 그대로 붙인다. */
     fun onDetail(detail: Detail, ts: Long): List<Session> {
         val open = current ?: return emptyList()

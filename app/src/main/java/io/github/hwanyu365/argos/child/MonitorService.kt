@@ -85,7 +85,8 @@ class MonitorService : Service() {
     private fun step() {
         val now = System.currentTimeMillis()
         // 처음이거나 오래 꺼져 있었으면 OS 보관 범위 안에서만 소급한다 (S#8).
-        val from = maxOf(builder.lastEventTs, now - BACKFILL_MS)
+        builder.skipGap(now - BACKFILL_MS)
+        val from = builder.lastEventTs
         // insert 후 커서 저장 전에 죽으면 같은 세션이 다시 들어오지만, SessionStore 가 (pkg, start) 중복을 무시한다.
         store.insert(builder.feed(device.events(from, now)))
         prefs.lastEventTs = builder.lastEventTs
@@ -106,6 +107,7 @@ class MonitorService : Service() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return false
         val family = FirebaseDatabase.getInstance().getReference("families/$fid")
         val perms = device.permissions()
+        // 실패해도 다음 변경이나 60초 heartbeat 에 다시 올라가므로 재시도 큐 없이 기록만 남긴다.
         family.child("children/$uid/live").setValue(
             mapOf(
                 "pkg" to live.pkg,
@@ -118,7 +120,7 @@ class MonitorService : Service() {
                 "updatedAt" to ServerValue.TIMESTAMP,
                 "perms" to mapOf("usage" to perms.usage, "a11y" to perms.accessibility, "notif" to perms.notificationListener)
             )
-        )
+        ).addOnFailureListener { Log.w(TAG, "live upload failed", it) }
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 처음 본 앱의 이름을 공유한다 (R#6).
         if (live.pkg != null && live.label != null && labeledApps.add(live.pkg)) {
             family.child("apps/${PkgKey.encode(live.pkg)}").setValue(mapOf("label" to live.label.take(100)))
