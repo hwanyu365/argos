@@ -17,8 +17,8 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -34,14 +34,18 @@ import io.github.hwanyu365.argos.data.Prefs
  * 판단은 SessionBuilder·LiveReporter·MonitorSchedule 이 하고, 여기서는 OS·저장소·Firebase 와 연결만 한다.
  */
 class MonitorService : Service() {
-    private val handler = Handler(Looper.getMainLooper())
+    // 24시간 소급 조회와 SQLite 쓰기가 메인 스레드를 막지 않도록 전용 스레드에서 돈다.
+    private val thread = HandlerThread("argos-monitor").apply { start() }
+    private val handler = Handler(thread.looper)
     private lateinit var prefs: Prefs
     private lateinit var device: DeviceState
     private lateinit var store: SessionStore
     private lateinit var builder: SessionBuilder
     private var lastLive: Live? = null
     private var lastSentAt = 0L
-    private val labeledApps = mutableSetOf<String>()
+
+    // 감시 스레드와 Firebase 콜백(메인 스레드)이 함께 쓴다.
+    private val labeledApps = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     // 화면이 꺼지면 tick 이 60초 간격이 되므로, 켜지는 즉시 3초 폴링으로 되돌린다 (NFR#2).
     private val screenOnReceiver = object : BroadcastReceiver() {
@@ -77,6 +81,7 @@ class MonitorService : Service() {
     override fun onDestroy() {
         unregisterReceiver(screenOnReceiver)
         handler.removeCallbacksAndMessages(null)
+        thread.quitSafely()
         super.onDestroy()
     }
 
@@ -124,6 +129,7 @@ class MonitorService : Service() {
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 처음 본 앱의 이름을 공유한다 (R#6).
         if (live.pkg != null && live.label != null && labeledApps.add(live.pkg)) {
             family.child("apps/${PkgKey.encode(live.pkg)}").setValue(mapOf("label" to live.label.take(100)))
+                .addOnFailureListener { labeledApps.remove(live.pkg) }
         }
         return true
     }
