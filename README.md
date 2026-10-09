@@ -21,8 +21,8 @@
 
    ```sh
    npm --prefix firebase ci
-   npx --prefix firebase firebase login
-   npx --prefix firebase firebase deploy --only database --project <프로젝트 ID>
+   npm --prefix firebase exec -- firebase login
+   npm --prefix firebase exec -- firebase deploy --only database --project <프로젝트 ID>
    ```
 6. (권장) **Android key** 를 argos 앱으로만 쓸 수 있게 제한합니다
    1. 서명 키의 SHA-1 확인: `./gradlew signingReport` (debug 키, `local.properties` 의 release 키)
@@ -63,7 +63,9 @@ npm --prefix firebase test # 보안 규칙 테스트 (Firebase Emulator, JDK 21 
 ```
 
 - 작업 흐름: 이슈 작성 → 로컬 Claude Code 또는 이슈 코멘트에 `@claude` → draft PR → CI + Claude 리뷰 → merge
-- 배포: `v*` 태그를 push 하면 서명된 APK 가 GitHub Releases 에 올라갑니다
+- 배포: `v*` 태그를 push 하면 서명된 APK 가 **Firebase App Distribution** 테스터 그룹에 배포됩니다
+  - GitHub Releases·Actions artifact 를 쓰지 않는 이유: public 저장소에서는 누구나 받을 수 있고, release APK 에는 소유자의 Firebase 설정이 들어 있음
+  - 테스터는 초대 메일을 수락한 뒤 Firebase App Tester 앱(또는 메일 링크)으로 설치·업데이트합니다
 
 ### 저장소 소유자 초기 설정 (fork 해서 운영할 때)
 
@@ -73,7 +75,8 @@ npm --prefix firebase test # 보안 규칙 테스트 (Firebase Emulator, JDK 21 
 | `CLAUDE_CODE_OAUTH_TOKEN` | `claude setup-token` 으로 발급 → Secrets 에 등록 |
 | `ARGOS_FIREBASE_API_KEY`, `_APP_ID`, `_PROJECT_ID`, `_DATABASE_URL` | release 빌드용 |
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | release 서명용. `base64 -w0 release.jks` |
-| `FIREBASE_SERVICE_ACCOUNT` | 규칙 자동 배포용 서비스 계정 JSON (역할: Firebase Realtime Database Admin) |
+| `FIREBASE_SERVICE_ACCOUNT` | 규칙 자동 배포·App Distribution 업로드용 서비스 계정 JSON (역할: Firebase Realtime Database Admin, Firebase App Distribution Admin) |
+| App Distribution 테스터 그룹 | Firebase 콘솔 → App Distribution → 테스터 및 그룹 → 그룹 `family` 생성 후 가족 Google 계정 추가. 다른 alias 를 쓰면 저장소 변수 `FIREBASE_TESTER_GROUPS` 에 지정 |
 | main 브랜치 보호 | CI(`android`, `rules`) 통과 필수, PR 로만 merge |
 
 ## License
