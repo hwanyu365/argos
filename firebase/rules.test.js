@@ -241,6 +241,8 @@ describe("TC#46 live 형식 검증", () => {
     await assertFails(ref().set(live({ pip: { pkg: "a", label: "a", since: 1, title: "x" } })));
     await assertFails(ref().set(live({ pip: { label: "a", since: 1 } })));
     await assertFails(ref().set(live({ pip: { pkg: "a", label: "a" } })));
+    await assertFails(ref().set(live({ pip: { pkg: 1, label: "a", since: 1 } })));
+    await assertFails(ref().set(live({ pip: { pkg: "a", label: 1, since: 1 } })));
   });
 
   test("자녀 노드에는 정의된 하위 노드만 쓸 수 있다", async () => {
