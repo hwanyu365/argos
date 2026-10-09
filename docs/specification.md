@@ -69,6 +69,8 @@
 **페어링 (UC1)**
 - `FR#3` 부모는 가족을 생성한다 → 생성자는 해당 가족의 첫 부모 멤버가 된다 [요구사항]
 - `FR#4` 가족 멤버인 부모는 초대 코드를 발급한다 → 10자리 코드와 같은 값을 담은 QR 을 표시하고, 코드는 10분 뒤 만료된다 [요구사항]
+  - 발급 시 "자녀 기기 추가" 또는 "보호자 추가"를 고르며, 코드는 그 역할로만 참여할 수 있다
+  - Why: 감시 대상인 자녀 기기의 클라이언트는 변조될 수 있으므로, 역할을 참여자가 아니라 발급한 부모가 정해야 함 (GH-16 리뷰)
   - 만료 전에는 여러 기기가 같은 코드로 참여할 수 있다 (자녀 여럿을 연달아 연결하는 흐름)
 - `FR#5` 자녀·부모 기기는 QR 스캔 또는 코드 입력으로 가족에 참여한다. 자녀는 참여 시 표시 이름을 입력한다 [요구사항]
 - `FR#6` 부모는 가족에서 자녀 기기를 제거할 수 있다 → 제거된 기기의 데이터도 삭제된다 [요구사항]
@@ -128,8 +130,8 @@
 ### 4.2 원격 (Firebase Realtime Database)
 
 ```
-pairing/{code}                                   { familyId, expiresAt }
-families/{fid}/members/{uid}                     { role: "parent"|"child", name, joinedAt }
+pairing/{code}                                   { familyId, role: "parent"|"child", expiresAt }
+families/{fid}/members/{uid}                     { role: "parent"|"child", name, joinedAt, code? }
 families/{fid}/children/{uid}/live               { pkg?, label?, since?, title?, url?, screenOn, updatedAt, perms: { usage, a11y, notif } }
 families/{fid}/children/{uid}/daily/{yyyy-MM-dd}/{pkgKey}     seconds (number)
 families/{fid}/children/{uid}/timeline/{yyyy-MM-dd}/{sessionId} { pkg, start, end, title?, url? }
@@ -145,10 +147,20 @@ families/{fid}/apps/{pkgKey}                     { label }
 ### 4.3 보안 규칙 계약 (`database.rules.json`)
 
 - `R#1` `families/{fid}` 이하 읽기 → `members/{auth.uid}` 가 존재할 때만
-- `R#2` `members/{uid}` 생성 → `auth.uid == uid` 이고, 쓰는 데이터의 `code` 가 `pairing/{code}.familyId == fid` 이며 만료 전일 때. 또는 가족이 비어 있을 때 첫 부모로 생성
+- `R#2` `members/{uid}` 생성 → `auth.uid == uid` 이고, 쓰는 데이터의 `code` 가 `pairing/{code}.familyId == fid` 이며 만료 전일 때. 또는 `families/{fid}` 가 아예 없을 때 첫 부모로 생성
+  - 멤버가 모두 떠나도 자녀 데이터가 남은 가족은 다시 차지할 수 없다 → 남은 기록이 제3자에게 넘어가지 않음
+  - 쓰는 `role` 은 `pairing/{code}.role` 과 같아야 한다 → 자녀용 코드로 부모 등록 불가
+  - 규칙이 코드를 검증하려면 쓰는 데이터 안에 코드가 있어야 하므로 `code` 를 멤버 레코드에 남긴다. 10분 뒤 무효가 되므로 남아도 재사용할 수 없다
+  - 멤버 레코드는 생성·삭제만 가능하고 수정은 거부한다 (역할 승격 방지)
+  - `joinedAt` 은 서버 시각만 허용, `name` 1~40자
 - `R#3` `children/{uid}` 쓰기 → `auth.uid == uid` (자녀 본인) 또는 부모 멤버의 삭제(null)
 - `R#4` `pairing/{code}` 생성 → 해당 가족의 부모 멤버만. 읽기 → 인증된 사용자가 코드를 정확히 알 때만 (목록 조회 금지)
+  - 키는 D#4 형식만, `role` 필수, `expiresAt` 은 `now < expiresAt ≤ now + 11분` (서버 시각 기준)
+  - Why: 클라이언트는 자기 시계로 10분 뒤를 계산하므로 서버보다 시계가 빠른 기기를 위해 1분 여유를 둔다
+  - 이미 있는 코드는 그 코드가 가리키는 가족의 부모만 덮어쓸 수 있다 → 다른 가족이 같은 코드를 가로채지 못함
 - `R#5` `members/{uid}` 삭제 → 본인 또는 같은 가족의 부모
+- `R#6` `apps/{pkgKey}` 쓰기 → 같은 가족의 자녀 멤버만. `{ label }` 1~100자만 허용
+  - 앱 이름은 가족 안에서 공유되는 표시용 값이라 어느 자녀가 써도 된다. 형식과 크기만 제한한다
 
 ### 4.4 빌드 설정 계약
 
@@ -261,10 +273,10 @@ stateDiagram-v2
 | TC#1 | FR#1 | 역할 미선택 / 앱 실행 / 역할 선택 화면. 역할 저장 후 재실행 / 해당 역할 홈으로 진입 | |
 | TC#2 | FR#2, §4.4 | 설정값 하나가 비어 있음 / 앱 실행 / 미설정 안내 화면, Firebase 초기화 호출 없음 | |
 | TC#3 | §4.4 | local.properties 와 환경변수에 다른 값 / 빌드 / local.properties 값이 주입됨 | Gradle 로직 |
-| TC#4 | FR#3, R#2 | 빈 가족 / 부모가 생성 / 생성자가 parent 멤버로 등록 | rules |
+| TC#4 | FR#3, R#2 | 없는 가족 / 부모가 생성 / 생성자가 parent 멤버로 등록. 멤버 있는 가족·데이터만 남은 가족 / 코드 없이 부모 등록 / 거부 | rules |
 | TC#5 | FR#4, D#4 | 부모 멤버 / 코드 발급 / 10자리 Crockford Base32, expiresAt = now+10분 | |
-| TC#6 | FR#5, R#2 | 유효 코드 / 자녀가 참여 / child 멤버 등록. 만료 코드 / 참여 / 거부 | rules |
-| TC#7 | R#4 | 부모가 아닌 사용자 / pairing 생성 / 거부. 인증 사용자 / `pairing` 목록 읽기 / 거부 | rules |
+| TC#6 | FR#5, R#2 | 유효 코드 / 자녀가 참여 / child 멤버 등록. 만료·타 가족 코드, 코드와 다른 role, 기존 멤버 수정, name 0·41자, 클라이언트 joinedAt / 참여 / 거부 | rules |
+| TC#7 | R#4 | 부모가 아닌 사용자 / pairing 생성 / 거부. 인증 사용자 / `pairing` 목록 읽기 / 거부. role 누락·형식 외 키·11분 초과·타 가족 코드 덮어쓰기 / 거부. 시계 +30초 / 허용 | rules |
 | TC#8 | NFR#4, R#1 | 가족 A 멤버 / 가족 B 읽기·쓰기 / 거부 | rules |
 | TC#9 | R#3 | 자녀 X / 자녀 Y 의 live 쓰기 / 거부. 부모 / 자녀 노드 쓰기(값) / 거부, 삭제 / 허용 | rules |
 | TC#10 | FR#6, R#5 | 부모 / 자녀 제거 / members·children 노드 삭제, 이후 해당 자녀 쓰기 거부 | rules |
@@ -302,6 +314,7 @@ stateDiagram-v2
 | TC#42 | FR#10, X#1b | Shorts 노드 트리(제목 있음·없음) + PLAYING 세션 없음 / 추출 / 제목 또는 "Shorts" | |
 | TC#43 | FR#12, §6.4 | 자녀 기기 화면 끈 채 8시간(밤) / 부모가 live 조회 / `updatedAt` 간격이 5분을 넘지 않음 | (통합) |
 | TC#44 | X#0 | 지원 브라우저·Shorts 외 앱의 접근성 이벤트 / 추출 / 아무것도 반환·저장하지 않음 | |
+| TC#45 | R#6 | 자녀 / 앱 이름 쓰기 / 허용. 부모·외부인, 빈 값·101자·추가 필드 / 거부 | rules |
 
 ## 부록. 변경 이력
 
@@ -309,3 +322,4 @@ stateDiagram-v2
 | --- | --- |
 | - | 초안 작성 |
 | GH-1 | [확인필요] 4건 실측 반영: 이벤트 지연, Shorts 제목(X#1b), 브라우저 매핑(X#2), Doze heartbeat. 접근성 읽기 범위(X#0), TC#42~44 |
+| GH-16 | 보안 규칙 구현: 멤버 `code` 필드, 멤버 수정 금지, 코드 형식·만료·덮어쓰기 제한, 코드에 참여 역할 고정, R#6 앱 이름 |

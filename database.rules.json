@@ -1,6 +1,44 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false
+    "pairing": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && $code.matches(/^[0-9A-HJKMNP-TV-Z]{10}$/) && (!data.exists() || root.child('families/' + data.child('familyId').val() + '/members/' + auth.uid + '/role').val() === 'parent') && (!newData.exists() || root.child('families/' + newData.child('familyId').val() + '/members/' + auth.uid + '/role').val() === 'parent')",
+        ".validate": "newData.hasChildren(['familyId', 'role', 'expiresAt']) && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 660000",
+        "familyId": { ".validate": "newData.isString()" },
+        "role": { ".validate": "newData.val() === 'parent' || newData.val() === 'child'" },
+        "expiresAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
+    "families": {
+      "$fid": {
+        ".read": "auth != null && data.child('members/' + auth.uid).exists()",
+        "members": {
+          "$uid": {
+            ".write": "auth != null && ((!data.exists() && newData.exists() && auth.uid === $uid && ((newData.child('role').val() === 'parent' && !root.child('families/' + $fid).exists()) || (newData.child('code').isString() && root.child('pairing/' + newData.child('code').val() + '/familyId').val() === $fid && root.child('pairing/' + newData.child('code').val() + '/role').val() === newData.child('role').val() && root.child('pairing/' + newData.child('code').val() + '/expiresAt').val() > now))) || (data.exists() && !newData.exists() && (auth.uid === $uid || data.parent().child(auth.uid + '/role').val() === 'parent')))",
+            ".validate": "newData.hasChildren(['role', 'name', 'joinedAt'])",
+            "role": { ".validate": "newData.val() === 'parent' || newData.val() === 'child'" },
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
+            "joinedAt": { ".validate": "newData.val() === now" },
+            "code": { ".validate": "newData.isString()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "children": {
+          "$uid": {
+            ".write": "auth != null && ((auth.uid === $uid && newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child') || (!newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'parent'))"
+          }
+        },
+        "apps": {
+          "$pkgKey": {
+            ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child'",
+            ".validate": "newData.hasChildren(['label'])",
+            "label": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    }
   }
 }
