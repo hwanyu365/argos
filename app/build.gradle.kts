@@ -43,6 +43,10 @@ android {
     }
 
     buildTypes {
+        // App Distribution 으로 받은 release 와 개발용 debug 를 한 기기에 같이 설치하기 위해 패키지를 나눈다.
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = false
             // 서명 키가 없으면 unsigned 로 빌드된다 → fork 에서도 assembleRelease 가 실패하지 않음.
@@ -77,6 +81,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.database)
 
     testImplementation(libs.junit)
 }

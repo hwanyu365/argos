@@ -2,4 +2,7 @@
     <string name="firebase_missing_title">Firebase setup required</string>
     <string name="firebase_missing_body">This app runs on your own Firebase project.\nFollow the setup guide in README, put ARGOS_FIREBASE_* values into local.properties and rebuild.</string>
     <string name="ready">Ready</string>
+    <string name="monitor_channel">Monitoring status</string>
+    <string name="monitor_title">Argos is monitoring</string>
+    <string name="monitor_text">A guardian can see app usage on this device</string>
 </resources>
