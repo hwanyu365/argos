@@ -16,7 +16,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        MonitorService.resumeFromUi(this)
+        // 화면 회전 같은 재생성 때는 이미 복구했으므로 처음 만들어질 때만 확인한다.
+        if (savedInstanceState == null) MonitorService.resumeFromUi(this)
         setContent {
             ArgosTheme {
                 Surface(Modifier.fillMaxSize()) {
