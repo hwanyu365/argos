@@ -18,11 +18,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -270,6 +273,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
     val scope = rememberCoroutineScope()
     var removing by remember { mutableStateOf(false) }
     var removeFailed by remember { mutableStateOf(false) }
+    var tab by remember { mutableIntStateOf(0) }
     val member = family.members.firstOrNull { it.uid == uid }
     val c = family.live[uid]
 
@@ -278,15 +282,24 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
             TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
             Text(member?.name.orEmpty(), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
         }
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)
-                LiveLines(card)
-                card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        PrimaryTabRow(selectedTabIndex = tab) {
+            listOf(R.string.tab_live, R.string.tab_period).forEachIndexed { i, label ->
+                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(label)) })
             }
         }
-        TextButton(onClick = { removing = true }) { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }
-        if (removeFailed) Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
+        if (tab == 0) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)
+                    LiveLines(card)
+                    card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+            TextButton(onClick = { removing = true }) { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }
+            if (removeFailed) Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
+        } else {
+            PeriodTab(repo, fid, uid, family.apps)
+        }
     }
 
     if (removing) {

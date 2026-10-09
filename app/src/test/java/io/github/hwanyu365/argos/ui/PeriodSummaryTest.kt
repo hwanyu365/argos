@@ -1,0 +1,42 @@
+package io.github.hwanyu365.argos.ui
+
+import java.time.LocalDate
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class PeriodSummaryTest {
+    private fun d(day: Int) = LocalDate.of(2026, 10, day)
+    private val daily = mapOf(
+        d(8) to mapOf("com,kakao,talk" to 600L),
+        d(9) to mapOf("com,google,android,youtube" to 3_600L, "com,kakao,talk" to 300L),
+        d(10) to mapOf("com,google,android,youtube" to 1_200L)
+    )
+    private val totals = mapOf(d(8) to 600L, d(9) to 3_700L, d(10) to 1_200L)
+
+    @Test
+    fun `TC#31 기간의 앱별 합계를 많은 순으로 보여주고 앱 키를 패키지명으로 되돌린다`() {
+        val s = PeriodSummary.of(daily, totals, today = d(10), days = 7)
+        assertEquals(listOf("com.google.android.youtube" to 4_800L, "com.kakao.talk" to 900L), s.apps)
+    }
+
+    @Test
+    fun `TC#31 일별 막대는 기간의 모든 날을 순서대로, 기록 없는 날은 0 으로 채운다`() {
+        val s = PeriodSummary.of(daily, totals, today = d(10), days = 7)
+        assertEquals(7, s.bars.size)
+        assertEquals(d(4), s.bars.first().first)
+        assertEquals(d(10) to 1_200L, s.bars.last())
+        assertEquals(0L, s.bars.first().second)
+    }
+
+    @Test
+    fun `TC#31 기간 총합은 하루 총합(겹침 한 번만)을 더한 값이다`() {
+        assertEquals(5_500L, PeriodSummary.of(daily, totals, today = d(10), days = 7).totalSec)
+    }
+
+    @Test
+    fun `TC#31 오늘만 고르면 오늘 기록만 센다`() {
+        val s = PeriodSummary.of(daily, totals, today = d(10), days = 1)
+        assertEquals(listOf("com.google.android.youtube" to 1_200L), s.apps)
+        assertEquals(1_200L, s.totalSec)
+    }
+}
