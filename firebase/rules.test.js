@@ -251,6 +251,16 @@ describe("TC#10 기기 제거", () => {
     await assertSucceeds(db("kidY").ref(`families/${FID}/members/kidY`).remove());
   });
 
+  test("자녀는 탈퇴하면서 자기 기록도 함께 지울 수 있다 (초기화)", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("kidY").ref(`families/${FID}`).update({ "members/kidY": null, "children/kidY": null }));
+  });
+
+  test("자녀는 다른 자녀의 기록을 지울 수 없다", async () => {
+    await seed(withKids());
+    await assertFails(db("kidX").ref(`families/${FID}/children/kidY`).remove());
+  });
+
   test("자녀는 다른 멤버를 제거할 수 없다", async () => {
     await seed(withKids());
     await assertFails(db("kidX").ref(`families/${FID}/members/parent1`).remove());

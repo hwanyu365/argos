@@ -27,7 +27,7 @@
         },
         "children": {
           "$uid": {
-            ".write": "auth != null && ((auth.uid === $uid && newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child') || (!newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'parent'))",
+            ".write": "auth != null && ((auth.uid === $uid && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child') || (!newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'parent'))",
             "live": {
               ".validate": "newData.hasChildren(['screenOn', 'updatedAt', 'perms'])",
               "pkg": { ".validate": "newData.isString() && newData.val().length <= 255" },

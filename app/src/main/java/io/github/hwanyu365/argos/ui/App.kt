@@ -43,11 +43,31 @@ fun ArgosApp() {
     val configured = remember { FirebaseConfig.fromBuildConfig().isComplete }
     var route by remember { mutableStateOf(Route.start(configured, prefs.role, prefs.familyId, prefs.monitoring)) }
     val repo = remember(configured) { if (configured) FamilyRepository() else null }
+    val scope = rememberCoroutineScope()
+    var resetFailed by remember { mutableStateOf(false) }
 
+    // FR#1: 가족에서 먼저 탈퇴하고, 성공했을 때만 로컬을 지운다. 실패하면 이 기기는 그대로 남아 다시 시도할 수 있다.
     fun reset() {
-        MonitorService.stop(context)
-        prefs.clear()
-        route = Route.Welcome
+        val fid = prefs.familyId
+        scope.launch {
+            runCatching { if (repo != null && fid != null) repo.leave(fid) }
+                .onSuccess {
+                    MonitorService.stop(context)
+                    prefs.clear()
+                    route = Route.Welcome
+                }.onFailure {
+                    Log.w(TAG, "leave failed", it)
+                    resetFailed = true
+                }
+        }
+    }
+
+    if (resetFailed) {
+        AlertDialog(
+            onDismissRequest = { resetFailed = false },
+            text = { Text(stringResource(R.string.error_generic)) },
+            confirmButton = { TextButton(onClick = { resetFailed = false }) { Text(stringResource(R.string.close)) } }
+        )
     }
 
     when (val r = route) {

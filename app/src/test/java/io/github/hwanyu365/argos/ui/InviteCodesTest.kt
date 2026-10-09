@@ -36,7 +36,7 @@ class InviteCodesTest {
     }
 
     @Test
-    fun `TC#47 QR 로 읽은 값도 입력과 같이 정규화하고 10자리로 자른다`() {
+    fun `TC#48 QR 로 읽은 값도 입력과 같이 정규화하고 10자리로 자른다`() {
         assertEquals("ABCDE01234", InviteCodes.fromScan("abcde-o1234-extra"))
     }
 }

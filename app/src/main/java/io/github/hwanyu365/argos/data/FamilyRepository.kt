@@ -4,6 +4,7 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseException
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 
 data class Member(val uid: String, val role: Role, val name: String)
 
@@ -103,8 +105,25 @@ class FamilyRepository {
         db.getReference("families/$fid").updateChildren(mapOf("members/$uid" to null, "children/$uid" to null)).await()
     }
 
+    /**
+     * FR#1 초기화: 자기 멤버 레코드와 기록을 함께 지운다 (자녀가 남긴 기록이 고아가 되지 않게).
+     * 이미 보호자가 제거한 기기는 권한이 없어 거부되는데, 자기 레코드도 읽을 수 없을 때만 이미 탈퇴한 것으로 본다.
+     * RTDB 쓰기는 오프라인이면 끝나지 않고 대기하므로 시간 제한을 둔다.
+     */
     suspend fun leave(fid: String) {
-        db.getReference("families/$fid/members/${uid()}").removeValue().await()
+        val uid = uid()
+        try {
+            withTimeout(LEAVE_TIMEOUT_MS) { db.getReference("families/$fid").updateChildren(mapOf("members/$uid" to null, "children/$uid" to null)).await() }
+        } catch (e: DatabaseException) {
+            // 거부가 '이미 제거됨' 때문인지 확인한다. 아직 멤버라서 자기 레코드를 읽을 수 있다면 진짜 실패다.
+            if (e.message?.contains("Permission denied", ignoreCase = true) != true) throw e
+            val stillMember = runCatching { db.getReference("families/$fid/members/$uid").get().await().exists() }.getOrDefault(false)
+            if (stillMember) throw e
+        }
+    }
+
+    private companion object {
+        const val LEAVE_TIMEOUT_MS = 10_000L
     }
 
     private fun member(role: Role, name: String) = mapOf("role" to role.key, "name" to name.trim().take(40), "joinedAt" to ServerValue.TIMESTAMP)
