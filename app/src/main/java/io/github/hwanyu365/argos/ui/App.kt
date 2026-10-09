@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import io.github.hwanyu365.argos.FirebaseConfig
 import io.github.hwanyu365.argos.R
 import io.github.hwanyu365.argos.child.MonitorService
+import io.github.hwanyu365.argos.child.SessionStore
 import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.JoinException
 import io.github.hwanyu365.argos.data.Prefs
@@ -54,6 +55,8 @@ fun ArgosApp() {
                 .onSuccess {
                     MonitorService.stop(context)
                     prefs.clear()
+                    // 다시 참여했을 때 이전 가족 시절의 세션이 새 가족 기록에 섞이지 않게 한다.
+                    context.deleteDatabase(SessionStore.NAME)
                     route = Route.Welcome
                 }.onFailure {
                     Log.w(TAG, "leave failed", it)
