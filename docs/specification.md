@@ -147,14 +147,16 @@ families/{fid}/apps/{pkgKey}                     { label }
 ### 4.3 보안 규칙 계약 (`database.rules.json`)
 
 - `R#1` `families/{fid}` 이하 읽기 → `members/{auth.uid}` 가 존재할 때만
-- `R#2` `members/{uid}` 생성 → `auth.uid == uid` 이고, 쓰는 데이터의 `code` 가 `pairing/{code}.familyId == fid` 이며 만료 전일 때. 또는 가족이 비어 있을 때 첫 부모로 생성
+- `R#2` `members/{uid}` 생성 → `auth.uid == uid` 이고, 쓰는 데이터의 `code` 가 `pairing/{code}.familyId == fid` 이며 만료 전일 때. 또는 `families/{fid}` 가 아예 없을 때 첫 부모로 생성
+  - 멤버가 모두 떠나도 자녀 데이터가 남은 가족은 다시 차지할 수 없다 → 남은 기록이 제3자에게 넘어가지 않음
   - 쓰는 `role` 은 `pairing/{code}.role` 과 같아야 한다 → 자녀용 코드로 부모 등록 불가
   - 규칙이 코드를 검증하려면 쓰는 데이터 안에 코드가 있어야 하므로 `code` 를 멤버 레코드에 남긴다. 10분 뒤 무효가 되므로 남아도 재사용할 수 없다
   - 멤버 레코드는 생성·삭제만 가능하고 수정은 거부한다 (역할 승격 방지)
   - `joinedAt` 은 서버 시각만 허용, `name` 1~40자
 - `R#3` `children/{uid}` 쓰기 → `auth.uid == uid` (자녀 본인) 또는 부모 멤버의 삭제(null)
 - `R#4` `pairing/{code}` 생성 → 해당 가족의 부모 멤버만. 읽기 → 인증된 사용자가 코드를 정확히 알 때만 (목록 조회 금지)
-  - 키는 D#4 형식만, `role` 필수, `expiresAt` 은 `now < expiresAt ≤ now + 10분`
+  - 키는 D#4 형식만, `role` 필수, `expiresAt` 은 `now < expiresAt ≤ now + 11분` (서버 시각 기준)
+  - Why: 클라이언트는 자기 시계로 10분 뒤를 계산하므로 서버보다 시계가 빠른 기기를 위해 1분 여유를 둔다
   - 이미 있는 코드는 그 코드가 가리키는 가족의 부모만 덮어쓸 수 있다 → 다른 가족이 같은 코드를 가로채지 못함
 - `R#5` `members/{uid}` 삭제 → 본인 또는 같은 가족의 부모
 
@@ -269,10 +271,10 @@ stateDiagram-v2
 | TC#1 | FR#1 | 역할 미선택 / 앱 실행 / 역할 선택 화면. 역할 저장 후 재실행 / 해당 역할 홈으로 진입 | |
 | TC#2 | FR#2, §4.4 | 설정값 하나가 비어 있음 / 앱 실행 / 미설정 안내 화면, Firebase 초기화 호출 없음 | |
 | TC#3 | §4.4 | local.properties 와 환경변수에 다른 값 / 빌드 / local.properties 값이 주입됨 | Gradle 로직 |
-| TC#4 | FR#3, R#2 | 빈 가족 / 부모가 생성 / 생성자가 parent 멤버로 등록 | rules |
+| TC#4 | FR#3, R#2 | 없는 가족 / 부모가 생성 / 생성자가 parent 멤버로 등록. 멤버 있는 가족·데이터만 남은 가족 / 코드 없이 부모 등록 / 거부 | rules |
 | TC#5 | FR#4, D#4 | 부모 멤버 / 코드 발급 / 10자리 Crockford Base32, expiresAt = now+10분 | |
-| TC#6 | FR#5, R#2 | 유효 코드 / 자녀가 참여 / child 멤버 등록. 만료 코드 / 참여 / 거부 | rules |
-| TC#7 | R#4 | 부모가 아닌 사용자 / pairing 생성 / 거부. 인증 사용자 / `pairing` 목록 읽기 / 거부 | rules |
+| TC#6 | FR#5, R#2 | 유효 코드 / 자녀가 참여 / child 멤버 등록. 만료·타 가족 코드, 코드와 다른 role, 기존 멤버 수정, name 0·41자, 클라이언트 joinedAt / 참여 / 거부 | rules |
+| TC#7 | R#4 | 부모가 아닌 사용자 / pairing 생성 / 거부. 인증 사용자 / `pairing` 목록 읽기 / 거부. role 누락·형식 외 키·11분 초과·타 가족 코드 덮어쓰기 / 거부. 시계 +30초 / 허용 | rules |
 | TC#8 | NFR#4, R#1 | 가족 A 멤버 / 가족 B 읽기·쓰기 / 거부 | rules |
 | TC#9 | R#3 | 자녀 X / 자녀 Y 의 live 쓰기 / 거부. 부모 / 자녀 노드 쓰기(값) / 거부, 삭제 / 허용 | rules |
 | TC#10 | FR#6, R#5 | 부모 / 자녀 제거 / members·children 노드 삭제, 이후 해당 자녀 쓰기 거부 | rules |

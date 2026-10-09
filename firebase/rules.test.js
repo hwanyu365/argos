@@ -39,6 +39,11 @@ describe("TC#4 가족 생성", () => {
     await assertFails(db("kid1").ref(`families/${FID}/members/kid1`).set(member("child")));
   });
 
+  test("멤버가 모두 떠나 데이터만 남은 가족은 첫 부모로 차지할 수 없다", async () => {
+    await seed({ families: { [FID]: { children: { kidX: { live: { pkg: "a" } } } } } });
+    await assertFails(db("intruder").ref(`families/${FID}/members/intruder`).set(member("parent")));
+  });
+
   test("이미 멤버가 있는 가족에는 코드 없이 부모로 들어갈 수 없다", async () => {
     await seed(parentFamily());
     await assertFails(db("intruder").ref(`families/${FID}/members/intruder`).set(member("parent")));
@@ -118,9 +123,14 @@ describe("TC#7 초대 코드 발급·조회", () => {
     await assertFails(db("parentB").ref(`pairing/${CODE}`).set({ familyId: "familyB", role: "child", expiresAt: Date.now() + MIN }));
   });
 
-  test("만료가 10분을 넘는 코드는 발급할 수 없다", async () => {
+  test("기기 시계가 서버보다 30초 빨라도 10분 코드는 발급된다", async () => {
     await seed(parentFamily());
-    await assertFails(db("parent1").ref(`pairing/${CODE}`).set({ familyId: FID, role: "child", expiresAt: Date.now() + 11 * MIN }));
+    await assertSucceeds(db("parent1").ref(`pairing/${CODE}`).set({ familyId: FID, role: "child", expiresAt: Date.now() + 10 * MIN + 30_000 }));
+  });
+
+  test("만료가 허용 상한(10분 + 시계 여유 1분)을 넘는 코드는 발급할 수 없다", async () => {
+    await seed(parentFamily());
+    await assertFails(db("parent1").ref(`pairing/${CODE}`).set({ familyId: FID, role: "child", expiresAt: Date.now() + 12 * MIN }));
   });
 
   test("형식이 아닌 코드(Crockford Base32 10자리 아님)는 발급할 수 없다", async () => {
