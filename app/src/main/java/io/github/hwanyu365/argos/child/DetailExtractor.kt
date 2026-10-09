@@ -54,11 +54,13 @@ object DetailExtractor {
 
     // X#5: 무엇을 찾아봤는지(검색어)와 어떤 영상인지(v)만 남긴다. 저장소 소유자 결정 (GH-36).
     private val KEPT_QUERY = setOf("q", "query", "search_query", "v")
+    private val TOKEN = Regex("(?=.*[0-9])(?=.*[A-Za-z])[A-Za-z0-9_-]{24,}")
 
     /** X#5: 쿼리는 검색어·영상 ID 만 남기고 지운다. 로그인 토큰·추적 값이 Firebase 로 올라가지 않게 한다. */
     fun sanitizeUrl(url: String): String {
         val noFragment = url.substringBefore('#')
-        val path = noFragment.substringBefore('?')
+        // 경로 조각 중 24자 이상의 영문·숫자 덩어리는 토큰으로 보고 가린다 (영상 ID 같은 짧은 식별자는 남는다).
+        val path = noFragment.substringBefore('?').split('/').joinToString("/") { if (TOKEN.matches(it)) "…" else it }
         val kept = noFragment.substringAfter('?', "").split('&').filter { it.substringBefore('=') in KEPT_QUERY && it.contains('=') }
         return if (kept.isEmpty()) path else "$path?${kept.joinToString("&")}"
     }

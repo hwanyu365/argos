@@ -40,6 +40,9 @@ class DetailExtractorTest {
         assertEquals("m.youtube.com/results?search_query=mukbang", DetailExtractor.sanitizeUrl("m.youtube.com/results?search_query=mukbang&sp=x"))
         assertEquals("example.com/login", DetailExtractor.sanitizeUrl("example.com/login?token=secret&session=1"))
         assertEquals("example.com/page", DetailExtractor.sanitizeUrl("example.com/page#section"))
+        // 경로에 든 토큰(비밀번호 재설정·공유 링크)은 가리고, 짧은 영상 ID 는 남긴다.
+        assertEquals("example.com/reset/…", DetailExtractor.sanitizeUrl("example.com/reset/aB3dE5fG7hJ9kL1mN3pQ5rS7tU9"))
+        assertEquals("m.youtube.com/shorts/Ab3dE5fG7hJ", DetailExtractor.sanitizeUrl("m.youtube.com/shorts/Ab3dE5fG7hJ"))
     }
 
     @Test
