@@ -102,7 +102,11 @@ class MonitorService : Service() {
         builder.skipGap(now - BACKFILL_MS)
         val from = builder.lastEventTs
         // insert 후 커서 저장 전에 죽으면 같은 세션이 다시 들어오지만, SessionStore 가 (pkg, start) 중복을 무시한다.
-        val closed = builder.feed(device.events(from, now))
+        val closed = builder.feed(device.events(from, now)).toMutableList()
+        // S#7·X#1b: 현재 앱의 상세(미디어 제목 → 화면에서 읽은 Shorts 제목·주소)가 바뀌면 세션을 나눈다.
+        builder.current?.pkg?.let { pkg ->
+            closed += builder.onDetail(DetailExtractor.combine(DetailExtractor.mediaTitle(pkg, device.mediaSessions()), ScreenDetail.of(pkg)), now)
+        }
         try {
             store.insert(closed)
         } catch (e: Exception) {

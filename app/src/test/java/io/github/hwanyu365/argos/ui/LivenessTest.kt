@@ -1,6 +1,7 @@
 package io.github.hwanyu365.argos.ui
 
 import io.github.hwanyu365.argos.ui.Liveness.DELAYED
+import io.github.hwanyu365.argos.ui.Liveness.LIMITED
 import io.github.hwanyu365.argos.ui.Liveness.OK
 import io.github.hwanyu365.argos.ui.Liveness.STOPPED
 import org.junit.Assert.assertEquals
@@ -17,6 +18,21 @@ class LivenessTest {
         assertEquals(DELAYED, Liveness.of(sinceUpdateMs = 3 * min, usageGranted = true))
         assertEquals(DELAYED, Liveness.of(sinceUpdateMs = 5 * min, usageGranted = true))
         assertEquals(STOPPED, Liveness.of(sinceUpdateMs = 6 * min, usageGranted = true))
+    }
+
+    @Test
+    fun `TC#28 정상이지만 접근성이나 알림 접근이 꺼져 있으면 상세 제한이다`() {
+        assertEquals(LIMITED, Liveness.of(sinceUpdateMs = min, usageGranted = true, detailsGranted = false))
+        assertEquals(OK, Liveness.of(sinceUpdateMs = min, usageGranted = true, detailsGranted = true))
+        assertEquals(DELAYED, Liveness.of(sinceUpdateMs = 3 * min, usageGranted = true, detailsGranted = false))
+    }
+
+    @Test
+    fun `TC#28 상세 제한이어도 현재 앱과 경과 시간은 보여준다`() {
+        val live = io.github.hwanyu365.argos.child.Live(pkg = "a.b", label = "앱", since = 0, screenOn = true)
+        val card = ChildCard.of("첫째", live, updatedAt = 0, apps = emptyMap(), serverNow = 30_000, usageGranted = true, detailsGranted = false)
+        assertEquals(LIMITED, card.liveness)
+        assertEquals(30_000L, card.elapsedMs)
     }
 
     @Test

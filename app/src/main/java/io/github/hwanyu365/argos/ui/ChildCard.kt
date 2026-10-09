@@ -3,9 +3,10 @@ package io.github.hwanyu365.argos.ui
 import io.github.hwanyu365.argos.child.Live
 import io.github.hwanyu365.argos.data.PkgKey
 
-/** spec §6.4. '상세 제한'은 접근성·알림 접근 기능이 생기는 UC3 에서 추가한다. */
+/** spec §6.4 감시 상태. */
 enum class Liveness {
     OK,
+    LIMITED,
     DELAYED,
     STOPPED
     ;
@@ -15,13 +16,18 @@ enum class Liveness {
         private const val DELAYED_MS = 5 * 60_000L
 
         /** 기록이 한 번도 없으면 판정하지 않는다(null). 네트워크 끊김과 의도적 중단은 구분하지 않는다. */
-        fun of(sinceUpdateMs: Long?, usageGranted: Boolean): Liveness? = when {
+        fun of(sinceUpdateMs: Long?, usageGranted: Boolean, detailsGranted: Boolean = true): Liveness? = when {
             sinceUpdateMs == null -> null
             !usageGranted || sinceUpdateMs > DELAYED_MS -> STOPPED
             sinceUpdateMs > OK_MS -> DELAYED
+            // 기록은 살아 있지만 영상 제목·주소를 모으지 못하는 상태.
+            !detailsGranted -> LIMITED
             else -> OK
         }
     }
+
+    /** 지금 상태를 믿을 수 있는지. 상세 제한은 기록 자체는 살아 있다. */
+    val current get() = this == OK || this == LIMITED
 }
 
 /** FR#15 자녀 카드에 보여줄 값. 시각 계산은 서버 기준이다 (D#2). */
@@ -40,24 +46,25 @@ data class ChildCard(
     companion object {
         fun serverNow(localNow: Long, offsetMs: Long) = localNow + offsetMs
 
-        fun of(name: String, live: Live?, updatedAt: Long?, apps: Map<String, String>, serverNow: Long, usageGranted: Boolean = true): ChildCard {
+        fun of(name: String, live: Live?, updatedAt: Long?, apps: Map<String, String>, serverNow: Long, usageGranted: Boolean = true, detailsGranted: Boolean = true): ChildCard {
             val pkg = live?.pkg
             val label = pkg?.let { live.label ?: apps[PkgKey.encode(it)] ?: it }
             val sinceUpdate = updatedAt?.let { (serverNow - it).coerceAtLeast(0) }
-            val liveness = Liveness.of(sinceUpdate, usageGranted)
+            val liveness = Liveness.of(sinceUpdate, usageGranted, detailsGranted)
+            val current = liveness?.current == true
             return ChildCard(
                 name = name,
                 appLabel = label,
                 // 기록이 끊겼으면 그 앱을 아직 쓰는지 알 수 없으므로 경과 시간을 늘려 보여주지 않는다 (FR#18).
-                elapsedMs = live?.since?.takeIf { pkg != null && liveness == Liveness.OK }?.let { (serverNow - it).coerceAtLeast(0) },
+                elapsedMs = live?.since?.takeIf { pkg != null && current }?.let { (serverNow - it).coerceAtLeast(0) },
                 sinceUpdateMs = sinceUpdate,
-                title = live?.title?.takeIf { liveness == Liveness.OK },
-                url = live?.url?.takeIf { liveness == Liveness.OK },
+                title = live?.title?.takeIf { current },
+                url = live?.url?.takeIf { current },
                 screenOn = live?.screenOn ?: false,
                 liveness = liveness,
                 // PiP 도 '지금' 상태라서 기록이 끊겼으면 보여주지 않는다 (FR#18).
-                pipLabel = live?.pip?.takeIf { liveness == Liveness.OK }?.let { it.label ?: apps[PkgKey.encode(it.pkg)] ?: it.pkg },
-                pipElapsedMs = live?.pip?.takeIf { liveness == Liveness.OK }?.let { (serverNow - it.since).coerceAtLeast(0) }
+                pipLabel = live?.pip?.takeIf { current }?.let { it.label ?: apps[PkgKey.encode(it.pkg)] ?: it.pkg },
+                pipElapsedMs = live?.pip?.takeIf { current }?.let { (serverNow - it.since).coerceAtLeast(0) }
             )
         }
     }

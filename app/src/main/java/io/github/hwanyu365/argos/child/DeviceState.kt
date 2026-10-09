@@ -50,6 +50,13 @@ class DeviceState(private val context: Context) {
         return setOfNotNull(home, "com.android.systemui", context.packageName)
     }
 
+    /** X#1: 알림 접근이 없으면 조회할 수 없으므로 빈 목록이다. */
+    fun mediaSessions(): List<MediaInfo> = runCatching {
+        context.getSystemService(android.media.session.MediaSessionManager::class.java)
+            .getActiveSessions(ComponentName(context, MediaListenerService::class.java))
+            .map { MediaInfo(it.packageName, it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING, it.metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE)) }
+    }.getOrDefault(emptyList())
+
     fun label(pkg: String): String = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
 
     val screenOn: Boolean get() = context.getSystemService(PowerManager::class.java).isInteractive
@@ -66,9 +73,9 @@ class DeviceState(private val context: Context) {
         val post = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         val battery = context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
         val a11y = Permissions.enabledIn(Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES), context.packageName)
-        // MediaListenerService 는 UC3 에서 추가된다. API 26 은 확인 API 가 없어 설정 문자열로 본다.
+        // API 26 은 확인 API 가 없어 설정 문자열로 본다.
         val listener = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(ComponentName(context, "${context.packageName}.child.MediaListenerService"))
+            context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(ComponentName(context, MediaListenerService::class.java))
         } else {
             Permissions.enabledIn(Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners"), context.packageName)
         }

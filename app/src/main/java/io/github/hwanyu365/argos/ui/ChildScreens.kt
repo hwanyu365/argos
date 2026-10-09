@@ -58,6 +58,10 @@ internal fun ChildPermissions(onStart: () -> Unit, onReset: () -> Unit) {
         Text(stringResource(R.string.permissions_title), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.permissions_body), style = MaterialTheme.typography.bodyMedium)
         Permission.entries.filter { it.required }.forEach { PermissionRow(it, perms.granted(it)) }
+        // FR#7 선택 권한: 없어도 시작할 수 있지만 영상 제목·주소가 모이지 않는다.
+        Text(stringResource(R.string.optional_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        Text(stringResource(R.string.restricted_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Permission.entries.filterNot { it.required }.forEach { PermissionRow(it, perms.granted(it)) }
         Button(onClick = onStart, enabled = perms.canStart, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text(stringResource(R.string.start_monitoring)) }
         TextButton(onClick = { resetting = true }) { Text(stringResource(R.string.reset)) }
     }
@@ -73,7 +77,8 @@ private fun PermissionRow(p: Permission, granted: Boolean) {
         Permission.USAGE -> R.string.perm_usage to R.string.perm_usage_desc
         Permission.POST_NOTIFICATIONS -> R.string.perm_post to R.string.perm_post_desc
         Permission.BATTERY -> R.string.perm_battery to R.string.perm_battery_desc
-        Permission.ACCESSIBILITY, Permission.NOTIFICATION_LISTENER -> return
+        Permission.ACCESSIBILITY -> R.string.perm_a11y to R.string.perm_a11y_desc
+        Permission.NOTIFICATION_LISTENER -> R.string.perm_notif to R.string.perm_notif_desc
     }
 
     fun request() {
@@ -85,7 +90,8 @@ private fun PermissionRow(p: Permission, granted: Boolean) {
             Permission.USAGE -> open(Settings.ACTION_USAGE_ACCESS_SETTINGS, pkg)
             Permission.POST_NOTIFICATIONS -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             Permission.BATTERY -> open(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
-            else -> Unit
+            Permission.ACCESSIBILITY -> open(Settings.ACTION_ACCESSIBILITY_SETTINGS, null)
+            Permission.NOTIFICATION_LISTENER -> open(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS, null)
         }
     }
 
