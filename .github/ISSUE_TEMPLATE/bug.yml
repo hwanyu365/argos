@@ -1,0 +1,31 @@
+name: 버그
+description: 의도와 다르게 동작하는 문제
+labels: [bug]
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 현상
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 절차
+      placeholder: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+      description: 스펙 근거가 있으면 ID 를 적는다 (예 S#3)
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 환경
+      placeholder: 기기 모델 / Android 버전 / argos 버전 / 부모·자녀 역할

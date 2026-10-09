@@ -1,0 +1,25 @@
+# Gradle / Android
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.iml
+.idea/
+.kotlin/
+
+# 비공개 설정 — 절대 커밋하지 않는다 (spec NFR#5)
+local.properties
+.firebaserc
+google-services.json
+*.jks
+*.keystore
+service-account*.json
+
+# Node / Firebase emulator
+node_modules/
+*-debug.log
+
+# 로컬 도구 상태
+.omc/
+.claude/settings.local.json

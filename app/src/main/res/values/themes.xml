@@ -1,0 +1,4 @@
+<resources>
+    <!-- Compose 가 실제 테마를 그리므로 창 배경과 상태바만 맞춘다. -->
+    <style name="Theme.Argos" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

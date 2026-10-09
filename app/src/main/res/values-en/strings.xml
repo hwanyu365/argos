@@ -1,0 +1,5 @@
+<resources>
+    <string name="firebase_missing_title">Firebase setup required</string>
+    <string name="firebase_missing_body">This app runs on your own Firebase project.\nFollow the setup guide in README, put ARGOS_FIREBASE_* values into local.properties and rebuild.</string>
+    <string name="ready">Ready</string>
+</resources>

@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name" translatable="false">Argos</string>
+    <string name="firebase_missing_title">Firebase 설정이 필요합니다</string>
+    <string name="firebase_missing_body">이 앱은 각자의 Firebase 프로젝트로 동작합니다.\nREADME 의 셋업 가이드에 따라 local.properties 에 ARGOS_FIREBASE_* 값을 넣고 다시 빌드하세요.</string>
+    <string name="ready">준비 완료</string>
+</resources>
