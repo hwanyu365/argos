@@ -1,7 +1,7 @@
 package io.github.hwanyu365.argos.child
 
 data class UsageEvent(val type: Type, val pkg: String?, val ts: Long, val cls: String? = null) {
-    enum class Type { RESUMED, PAUSED, STOPPED, SCREEN_ON, SCREEN_OFF }
+    enum class Type { RESUMED, PAUSED, STOPPED, DESTROYED, SCREEN_ON, SCREEN_OFF }
 }
 
 data class Detail(val title: String? = null, val url: String? = null) {
@@ -42,7 +42,8 @@ class SessionBuilder(
             when (e.type) {
                 UsageEvent.Type.RESUMED -> onResumed(e.pkg ?: continue, e.ts, closed)
                 UsageEvent.Type.PAUSED -> if (e.pkg == current?.pkg) paused = e.ts to e.cls
-                UsageEvent.Type.STOPPED -> onStopped(e.pkg, e.cls, e.ts, closed)
+                // 숨김 없이 종료되는 경우도 있어 종료 이벤트도 PiP 종료로 본다.
+                UsageEvent.Type.STOPPED, UsageEvent.Type.DESTROYED -> onStopped(e.pkg, e.cls, e.ts, closed)
                 UsageEvent.Type.SCREEN_OFF -> {
                     close(paused?.first ?: e.ts, closed)
                     closePip(e.ts, closed)

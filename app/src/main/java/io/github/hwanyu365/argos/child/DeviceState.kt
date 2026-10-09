@@ -19,6 +19,11 @@ class DeviceState(private val context: Context) {
     private val usm = context.getSystemService(UsageStatsManager::class.java)
     private val pm = context.packageManager
 
+    private companion object {
+        // UsageEvents.Event.ACTIVITY_DESTROYED 는 API 29 에 공개됐다. 값은 그 이전 버전에서도 같아 상수로 둔다.
+        const val ACTIVITY_DESTROYED = 24
+    }
+
     fun events(from: Long, to: Long): List<UsageEvent> {
         val out = mutableListOf<UsageEvent>()
         val raw = usm.queryEvents(from, to)
@@ -28,6 +33,7 @@ class DeviceState(private val context: Context) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> UsageEvent.Type.RESUMED
                 UsageEvents.Event.ACTIVITY_PAUSED -> UsageEvent.Type.PAUSED
                 UsageEvents.Event.ACTIVITY_STOPPED -> UsageEvent.Type.STOPPED
+                ACTIVITY_DESTROYED -> UsageEvent.Type.DESTROYED
                 UsageEvents.Event.SCREEN_INTERACTIVE -> UsageEvent.Type.SCREEN_ON
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE -> UsageEvent.Type.SCREEN_OFF
                 else -> continue

@@ -1,5 +1,6 @@
 package io.github.hwanyu365.argos.child
 
+import io.github.hwanyu365.argos.child.UsageEvent.Type.DESTROYED
 import io.github.hwanyu365.argos.child.UsageEvent.Type.PAUSED
 import io.github.hwanyu365.argos.child.UsageEvent.Type.RESUMED
 import io.github.hwanyu365.argos.child.UsageEvent.Type.SCREEN_OFF
@@ -29,6 +30,14 @@ class PipSessionTest {
         val b = builder()
         val closed = b.feed(listOf(ev(RESUMED, "a", 0, "A"), ev(PAUSED, "a", 9_800, "A"), ev(RESUMED, "b", 10_000, "B"), ev(STOPPED, "a", 10_600, "A")))
         assertEquals(listOf(Session("a", 0, 10_000)), closed)
+        assertNull(b.pip)
+    }
+
+    @Test
+    fun `TC#50 숨김 없이 PiP 화면이 종료돼도 닫는다`() {
+        val b = builder()
+        b.feed(listOf(ev(RESUMED, "yt", 0, "Watch"), ev(PAUSED, "yt", 9_000, "Watch"), ev(RESUMED, "kakao", 10_000)))
+        assertEquals(listOf(Session("yt", 0, 50_000)), b.feed(listOf(ev(DESTROYED, "yt", 50_000, "Watch"))))
         assertNull(b.pip)
     }
 

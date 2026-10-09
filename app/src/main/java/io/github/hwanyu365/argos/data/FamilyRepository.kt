@@ -91,7 +91,8 @@ class FamilyRepository {
                             url = l.child("url").getValue(String::class.java),
                             screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false,
                             pip = l.child("pip/pkg").getValue(String::class.java)?.let { pkg ->
-                                LivePip(pkg, l.child("pip/label").getValue(String::class.java), l.child("pip/since").getValue(Long::class.java) ?: 0)
+                                // since 가 없으면 경과 시간을 계산할 수 없으므로 PiP 를 보여주지 않는다.
+                                l.child("pip/since").getValue(Long::class.java)?.let { LivePip(pkg, l.child("pip/label").getValue(String::class.java), it) }
                             }
                         )
                     } else {
