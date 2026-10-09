@@ -186,7 +186,10 @@ class MonitorService : Service() {
         }
 
         private fun scheduleWatchdog(context: Context) {
-            context.getSystemService(JobScheduler::class.java).schedule(
+            val js = context.getSystemService(JobScheduler::class.java)
+            // 다시 예약하면 주기가 처음부터 다시 시작되므로, 이미 예약돼 있으면 그대로 둔다.
+            if (js.getPendingJob(WATCHDOG_JOB) != null) return
+            js.schedule(
                 JobInfo.Builder(WATCHDOG_JOB, ComponentName(context, Watchdog::class.java)).setPeriodic(WATCHDOG_MS).setPersisted(true).build()
             )
         }

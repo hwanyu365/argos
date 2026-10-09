@@ -264,8 +264,9 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
         }
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                LiveLines(ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true))
-                c?.live?.url?.takeIf { c.live.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)
+                LiveLines(card)
+                card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         }
         TextButton(onClick = { removing = true }) { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }

@@ -31,10 +31,13 @@ class LivenessTest {
 
     @Test
     fun `TC#28 정상이 아니면 카드의 경과 시간은 늘어나지 않고 마지막 앱으로만 보인다`() {
-        val live = io.github.hwanyu365.argos.child.Live(pkg = "a.b", label = "앱", since = 0, screenOn = true)
+        val live = io.github.hwanyu365.argos.child.Live(pkg = "a.b", label = "앱", since = 0, title = "영상", url = "u", screenOn = true)
         val stale = ChildCard.of("첫째", live, updatedAt = 0, apps = emptyMap(), serverNow = 10 * min, usageGranted = true)
         assertEquals(STOPPED, stale.liveness)
         assertNull(stale.elapsedMs)
         assertEquals("앱", stale.appLabel)
+        // 끊긴 뒤의 상세는 '지금 보는 것'처럼 보이면 안 된다.
+        assertNull(stale.title)
+        assertNull(stale.url)
     }
 }

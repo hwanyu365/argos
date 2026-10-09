@@ -49,8 +49,8 @@ data class ChildCard(
                 // 기록이 끊겼으면 그 앱을 아직 쓰는지 알 수 없으므로 경과 시간을 늘려 보여주지 않는다 (FR#18).
                 elapsedMs = live?.since?.takeIf { pkg != null && liveness == Liveness.OK }?.let { (serverNow - it).coerceAtLeast(0) },
                 sinceUpdateMs = sinceUpdate,
-                title = live?.title,
-                url = live?.url,
+                title = live?.title?.takeIf { liveness == Liveness.OK },
+                url = live?.url?.takeIf { liveness == Liveness.OK },
                 screenOn = live?.screenOn ?: false,
                 liveness = liveness
             )
