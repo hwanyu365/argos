@@ -39,7 +39,7 @@ object DetailExtractor {
             val bar = find(root) { it.viewId == id } ?: return null
             // X#3: 편집 중인 주소창의 글자는 방문 주소가 아니라 입력 중인 검색어일 수 있다.
             if (bar.focused) return null
-            return bar.text?.replace(BIDI, "")?.trim()?.takeIf { it.isNotEmpty() }?.let { Detail(url = it) }
+            return bar.text?.replace(BIDI, "")?.trim()?.takeIf { it.isNotEmpty() }?.let { Detail(url = sanitizeUrl(it)) }
         }
         if (pkg == YOUTUBE) {
             val footer = find(root) { it.viewId == SHORTS_FOOTER } ?: return null
@@ -50,6 +50,17 @@ object DetailExtractor {
             return Detail(title = title?.let { "$SHORTS · $it" } ?: SHORTS)
         }
         return null
+    }
+
+    // X#5: 무엇을 찾아봤는지(검색어)와 어떤 영상인지(v)만 남긴다. 저장소 소유자 결정 (GH-36).
+    private val KEPT_QUERY = setOf("q", "query", "search_query", "v")
+
+    /** X#5: 쿼리는 검색어·영상 ID 만 남기고 지운다. 로그인 토큰·추적 값이 Firebase 로 올라가지 않게 한다. */
+    fun sanitizeUrl(url: String): String {
+        val noFragment = url.substringBefore('#')
+        val path = noFragment.substringBefore('?')
+        val kept = noFragment.substringAfter('?', "").split('&').filter { it.substringBefore('=') in KEPT_QUERY && it.contains('=') }
+        return if (kept.isEmpty()) path else "$path?${kept.joinToString("&")}"
     }
 
     /** X#1b: 미디어 세션 제목이 있으면 그것을, 없으면 화면에서 읽은 제목을 쓴다. 브라우저 주소는 함께 남긴다 (웹 영상 재생 중에도 주소가 보이게). */

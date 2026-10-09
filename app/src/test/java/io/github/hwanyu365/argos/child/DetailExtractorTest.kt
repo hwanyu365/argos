@@ -33,6 +33,22 @@ class DetailExtractorTest {
     }
 
     @Test
+    fun `TC#54 주소의 검색어와 영상 ID 만 남기고 나머지 쿼리와 조각은 지운다`() {
+        assertEquals("www.google.com/search?q=고양이", DetailExtractor.sanitizeUrl("www.google.com/search?q=고양이&sca_esv=abc&ei=xyz"))
+        assertEquals("m.search.naver.com/search.naver?query=펭귄", DetailExtractor.sanitizeUrl("m.search.naver.com/search.naver?sm=mtp&query=펭귄&where=m"))
+        assertEquals("m.youtube.com/watch?v=dQw4w9WgXcQ", DetailExtractor.sanitizeUrl("m.youtube.com/watch?v=dQw4w9WgXcQ&pp=token#t=10"))
+        assertEquals("m.youtube.com/results?search_query=mukbang", DetailExtractor.sanitizeUrl("m.youtube.com/results?search_query=mukbang&sp=x"))
+        assertEquals("example.com/login", DetailExtractor.sanitizeUrl("example.com/login?token=secret&session=1"))
+        assertEquals("example.com/page", DetailExtractor.sanitizeUrl("example.com/page#section"))
+    }
+
+    @Test
+    fun `TC#54 주소창의 주소는 쿼리를 정리한 뒤 기록한다`() {
+        val root = n(kids = arrayOf(n("com.android.chrome:id/url_bar", text = "www.google.com/search?q=cat&ei=1")))
+        assertEquals(Detail(url = "www.google.com/search?q=cat"), DetailExtractor.fromScreen("com.android.chrome", root))
+    }
+
+    @Test
     fun `TC#24 주소창을 편집 중이면 입력 중인 글자를 기록하지 않는다`() {
         val root = n(kids = arrayOf(n("com.android.chrome:id/url_bar", text = "검색어 입력 중", focused = true)))
         assertNull(DetailExtractor.fromScreen("com.android.chrome", root))
