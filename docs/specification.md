@@ -120,12 +120,12 @@
 
 ## 4. 데이터 및 API 스펙
 
-### 4.1 로컬 (자녀 기기, Room)
+### 4.1 로컬 (자녀 기기, SQLite)
 
 | 테이블 | 필드 | 비고 |
 | --- | --- | --- |
-| `session` | `id` PK, `pkg`, `startMs`, `endMs?`, `title?`, `url?`, `uploaded` | `endMs` null = 진행 중 세션 (최대 1개) |
-| `meta` | `key` PK, `value` | `lastEventTs` (마지막 처리 이벤트 시각), `role`, `familyId`, `childId` |
+| `session` (SQLite) | `id` PK, `pkg`, `start`, `end`, `title?`, `url?`, `uploaded`, `UNIQUE(pkg, start)` | 닫힌 세션만 저장. 같은 세션이 다시 들어오면 무시 (S#8) |
+| SharedPreferences | `role`, `familyId`, `monitoring`, `lastEventTs`, 진행 중 세션 | 진행 중 세션은 재시작 복원용 (최대 1개) |
 
 ### 4.2 원격 (Firebase Realtime Database)
 
@@ -290,7 +290,7 @@ stateDiagram-v2
 | TC#13 | S#3, S#4 | A RESUMED, A PAUSED, SCREEN_OFF / 빌드 / A 는 PAUSED 시각에 종료 | |
 | TC#14 | S#5 | A RESUMED, 런처 RESUMED / 빌드 / A 종료, 런처 세션 없음 | |
 | TC#15 | S#6 | 0.5초 세션 / 빌드 / 버려짐 | |
-| TC#16 | S#7 | A 진행 중 title 변경 / 반영 / A 세션 2개로 분할 | |
+| TC#16 | S#7 | 상세 없던 세션에 첫 상세 / 반영 / 나누지 않고 붙임. 상세 변경·사라짐 / 반영 / 그 시각에 분할. 진행 중 세션 없음 / 무시 | |
 | TC#17 | S#8, FR#8 | lastEventTs 이후 이벤트만 존재 / 재시작 후 빌드 / 중복 없이 이어서 생성 | |
 | TC#18 | A#1 | 23:50~00:10 세션 / 집계 / 두 날짜에 각 600초 | |
 | TC#19 | A#2, A#3 | 진행 중 세션 / 두 번 집계 / 두 번째 값이 첫 값을 덮어씀(누적 아님) | |
@@ -320,7 +320,7 @@ stateDiagram-v2
 | TC#43 | FR#12, §6.4 | 자녀 기기 화면 끈 채 8시간(밤) / 부모가 live 조회 / `updatedAt` 간격이 5분을 넘지 않음 | (통합) |
 | TC#44 | X#0 | 지원 브라우저·Shorts 외 앱의 접근성 이벤트 / 추출 / 아무것도 반환·저장하지 않음 | |
 | TC#45 | R#6 | 자녀 / 앱 이름 쓰기 / 허용. 부모·외부인, 빈 값·101자·추가 필드 / 거부 | rules |
-| TC#46 | R#3 | 유효 live·화면 꺼짐 live / 쓰기 / 허용. 필수 필드 누락, 클라이언트 updatedAt, 정의 외 필드, 길이 초과, 정의 외 하위 노드 / 거부 | rules |
+| TC#46 | R#3 | 유효 live·화면 꺼짐 live / 쓰기 / 허용. 필수 필드 누락, 클라이언트 updatedAt, 정의 외 필드, 길이 초과(pkg·label·title·url), 타입 불일치(screenOn·since·perms), 정의 외 하위 노드 / 거부 | rules |
 
 ## 부록. 변경 이력
 

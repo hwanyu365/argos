@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper
 // ponytail: 테이블 하나라 Room 대신 플랫폼 SQLite 를 쓴다. 테이블·질의가 늘면 Room 으로 옮긴다.
 class SessionStore(context: Context) : SQLiteOpenHelper(context, "sessions.db", null, 1) {
     override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE session (id INTEGER PRIMARY KEY AUTOINCREMENT, pkg TEXT NOT NULL, start INTEGER NOT NULL, `end` INTEGER NOT NULL, title TEXT, url TEXT, uploaded INTEGER NOT NULL DEFAULT 0)")
+        db.execSQL("CREATE TABLE session (id INTEGER PRIMARY KEY AUTOINCREMENT, pkg TEXT NOT NULL, start INTEGER NOT NULL, `end` INTEGER NOT NULL, title TEXT, url TEXT, uploaded INTEGER NOT NULL DEFAULT 0, UNIQUE(pkg, start))")
         db.execSQL("CREATE INDEX session_start ON session(start)")
     }
 
@@ -20,7 +20,8 @@ class SessionStore(context: Context) : SQLiteOpenHelper(context, "sessions.db", 
             beginTransaction()
             try {
                 sessions.forEach {
-                    insert(
+                    // 커서 저장 전에 죽어 같은 이벤트를 다시 처리해도 세션이 두 번 쌓이지 않게 한다 (S#8).
+                    insertWithOnConflict(
                         "session",
                         null,
                         ContentValues().apply {
@@ -29,7 +30,8 @@ class SessionStore(context: Context) : SQLiteOpenHelper(context, "sessions.db", 
                             put("end", it.end)
                             put("title", it.title)
                             put("url", it.url)
-                        }
+                        },
+                        SQLiteDatabase.CONFLICT_IGNORE
                     )
                 }
                 setTransactionSuccessful()

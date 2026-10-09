@@ -13,6 +13,7 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
@@ -42,6 +43,14 @@ class MonitorService : Service() {
     private var lastSentAt = 0L
     private val labeledApps = mutableSetOf<String>()
 
+    // 화면이 꺼지면 tick 이 60초 간격이 되므로, 켜지는 즉시 3초 폴링으로 되돌린다 (NFR#2).
+    private val screenOnReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            handler.removeCallbacks(tick)
+            handler.post(tick)
+        }
+    }
+
     private val tick = object : Runnable {
         override fun run() {
             runCatching { step() }.onFailure { Log.e(TAG, "tick failed", it) }
@@ -55,6 +64,7 @@ class MonitorService : Service() {
         device = DeviceState(this)
         store = SessionStore(this)
         builder = SessionBuilder(device.excludedPackages(), prefs.lastEventTs, prefs.openSession)
+        registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -65,6 +75,7 @@ class MonitorService : Service() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(screenOnReceiver)
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -75,6 +86,7 @@ class MonitorService : Service() {
         val now = System.currentTimeMillis()
         // 처음이거나 오래 꺼져 있었으면 OS 보관 범위 안에서만 소급한다 (S#8).
         val from = maxOf(builder.lastEventTs, now - BACKFILL_MS)
+        // insert 후 커서 저장 전에 죽으면 같은 세션이 다시 들어오지만, SessionStore 가 (pkg, start) 중복을 무시한다.
         store.insert(builder.feed(device.events(from, now)))
         prefs.lastEventTs = builder.lastEventTs
         prefs.openSession = builder.current
@@ -165,7 +177,10 @@ class MonitorService : Service() {
         }
     }
 
-    /** 서비스가 OS 에 의해 죽었을 때 15분 안에 되살린다. 이미 떠 있으면 onStartCommand 만 다시 불린다. */
+    /**
+     * 서비스가 OS 에 의해 죽었을 때 15분 안에 되살린다. 이미 떠 있으면 onStartCommand 만 다시 불린다.
+     * Android 12+ 의 백그라운드 FGS 시작 제한은 배터리 최적화 제외 앱에는 적용되지 않는다 → 배터리 제외를 필수 권한으로 둔 이유 (FR#7).
+     */
     class Watchdog : JobService() {
         override fun onStartJob(params: JobParameters?): Boolean {
             resumeIfMonitoring(this)

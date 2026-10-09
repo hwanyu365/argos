@@ -220,7 +220,16 @@ describe("TC#46 live 형식 검증", () => {
     await seed(withKids());
     await assertFails(ref().set(live({ title: "x".repeat(301) })));
     await assertFails(ref().set(live({ url: "x".repeat(2049) })));
-    await assertSucceeds(ref().set(live({ title: "x".repeat(300), url: "x".repeat(2048) })));
+    await assertFails(ref().set(live({ pkg: "x".repeat(256) })));
+    await assertFails(ref().set(live({ label: "x".repeat(101) })));
+    await assertSucceeds(ref().set(live({ pkg: "x".repeat(255), label: "x".repeat(100), title: "x".repeat(300), url: "x".repeat(2048) })));
+  });
+
+  test("타입이 다르면 거부한다", async () => {
+    await seed(withKids());
+    await assertFails(ref().set(live({ screenOn: "true" })));
+    await assertFails(ref().set(live({ since: "1" })));
+    for (const k of ["usage", "a11y", "notif"]) await assertFails(ref().set(live({ perms: { usage: true, a11y: false, notif: false, [k]: "yes" } })));
   });
 
   test("자녀 노드에는 정의된 하위 노드만 쓸 수 있다", async () => {
