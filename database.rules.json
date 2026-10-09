@@ -4,8 +4,9 @@
       "$code": {
         ".read": "auth != null",
         ".write": "auth != null && $code.matches(/^[0-9A-HJKMNP-TV-Z]{10}$/) && (!data.exists() || root.child('families/' + data.child('familyId').val() + '/members/' + auth.uid + '/role').val() === 'parent') && (!newData.exists() || root.child('families/' + newData.child('familyId').val() + '/members/' + auth.uid + '/role').val() === 'parent')",
-        ".validate": "newData.hasChildren(['familyId', 'expiresAt']) && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 600000",
+        ".validate": "newData.hasChildren(['familyId', 'role', 'expiresAt']) && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 600000",
         "familyId": { ".validate": "newData.isString()" },
+        "role": { ".validate": "newData.val() === 'parent' || newData.val() === 'child'" },
         "expiresAt": { ".validate": "newData.isNumber()" },
         "$other": { ".validate": false }
       }
@@ -15,7 +16,7 @@
         ".read": "auth != null && data.child('members/' + auth.uid).exists()",
         "members": {
           "$uid": {
-            ".write": "auth != null && ((!data.exists() && newData.exists() && auth.uid === $uid && ((newData.child('role').val() === 'parent' && !data.parent().exists()) || (newData.child('code').isString() && root.child('pairing/' + newData.child('code').val() + '/familyId').val() === $fid && root.child('pairing/' + newData.child('code').val() + '/expiresAt').val() > now))) || (data.exists() && !newData.exists() && (auth.uid === $uid || data.parent().child(auth.uid + '/role').val() === 'parent')))",
+            ".write": "auth != null && ((!data.exists() && newData.exists() && auth.uid === $uid && ((newData.child('role').val() === 'parent' && !data.parent().exists()) || (newData.child('code').isString() && root.child('pairing/' + newData.child('code').val() + '/familyId').val() === $fid && root.child('pairing/' + newData.child('code').val() + '/role').val() === newData.child('role').val() && root.child('pairing/' + newData.child('code').val() + '/expiresAt').val() > now))) || (data.exists() && !newData.exists() && (auth.uid === $uid || data.parent().child(auth.uid + '/role').val() === 'parent')))",
             ".validate": "newData.hasChildren(['role', 'name', 'joinedAt'])",
             "role": { ".validate": "newData.val() === 'parent' || newData.val() === 'child'" },
             "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
