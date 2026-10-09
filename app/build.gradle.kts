@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ktlint)
 }
@@ -17,7 +16,7 @@ fun config(key: String): String = localProps.getProperty(key)?.takeIf { it.isNot
 
 android {
     namespace = "io.github.hwanyu365.argos"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.hwanyu365.argos"
