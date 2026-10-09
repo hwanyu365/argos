@@ -149,8 +149,9 @@ class MonitorService : Service() {
         days.forEach { d ->
             val day = agg[d]
             // A#3: 날짜 노드 전체를 덮어써 재시도·중복 업로드에도 값이 일정하다.
-            update["children/$uid/daily/$d"] = day?.apps?.mapKeys { PkgKey.encode(it.key) }?.takeIf { it.isNotEmpty() }
-            update["children/$uid/dailyTotal/$d"] = day?.totalSec?.takeIf { it > 0 }
+            // R#7 상한을 넘는 값 하나 때문에 업로드 전체가 거부되지 않도록 미리 자른다.
+            update["children/$uid/daily/$d"] = day?.apps?.mapKeys { PkgKey.encode(it.key) }?.mapValues { it.value.coerceAtMost(MAX_DAY_SEC) }?.takeIf { it.isNotEmpty() }
+            update["children/$uid/dailyTotal/$d"] = day?.totalSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
         }
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 집계에 나온 앱의 이름을 공유한다 (R#6).
         val newLabels = agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }
@@ -164,10 +165,7 @@ class MonitorService : Service() {
                 Log.w(TAG, "daily upload failed", it)
             }
         // 기준일은 하루에 한 번 바뀌므로 그때만 원격을 조회해 정리한다 (다운로드 한도 절약).
-        if (cutoff != lastPruneCutoff) {
-            lastPruneCutoff = cutoff
-            pruneRemote(family.child("children/$uid"), cutoff)
-        }
+        if (cutoff != lastPruneCutoff) pruneRemote(family.child("children/$uid"), cutoff)
     }
 
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
@@ -175,7 +173,8 @@ class MonitorService : Service() {
         listOf("daily", "dailyTotal").forEach { node ->
             child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap ->
                 val old = snap.children.mapNotNull { it.key }.associate { "$node/$it" to null }
-                if (old.isNotEmpty()) child.updateChildren(old)
+                // 성공했을 때만 기준일을 기록해, 실패하면 다음 업로드 때 다시 정리한다.
+                if (old.isEmpty()) lastPruneCutoff = cutoff else child.updateChildren(old).addOnSuccessListener { lastPruneCutoff = cutoff }
             }
         }
     }
@@ -233,6 +232,7 @@ class MonitorService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val BACKFILL_MS = 24 * 60 * 60_000L
         private const val DAILY_MS = 15 * 60_000L
+        private const val MAX_DAY_SEC = 90_000L
         private const val WATCHDOG_JOB = 1
         private const val WATCHDOG_MS = 15 * 60_000L
 

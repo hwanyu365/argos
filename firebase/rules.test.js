@@ -283,6 +283,13 @@ describe("TC#52 일별 사용 시간 형식 검증", () => {
     await assertFails(base().child("dailyTotal/2026-10-10").set(1.5));
   });
 
+  test("자녀는 보관 기간이 지난 자기 일별 기록을 지울 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(base().child("daily/2026-10-10").set({ a: 1 }));
+    await assertSucceeds(base().update({ "daily/2026-10-10": null, "dailyTotal/2026-10-10": null }));
+    await assertFails(db("kidY").ref(`families/${FID}/children/kidX/daily/2026-10-10`).remove());
+  });
+
   test("부모는 일별 기록을 읽을 수 있고 쓸 수 없다", async () => {
     await seed(withKids());
     await assertSucceeds(db("parent1").ref(`families/${FID}/children/kidX/daily`).get());
