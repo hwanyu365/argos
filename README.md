@@ -35,7 +35,7 @@
 
 ### 2. 빌드
 
-- 필요 도구: JDK 21, Android SDK (API 36), Node.js 22 (규칙 테스트·배포용)
+- 필요 도구: JDK 21, Android SDK (API 37), Node.js 22 (규칙 테스트·배포용)
 - `local.properties.example` 을 `local.properties` 로 복사하고 값을 채웁니다. 같은 이름의 환경변수로도 줄 수 있습니다
   - Android Studio 로 연 적이 있어 `local.properties` 가 이미 있으면, 복사하지 말고 `ARGOS_FIREBASE_*` 줄만 추가합니다 (덮어쓰면 `sdk.dir` 이 사라짐)
 - JDK 21 이 PATH 에 없으면 빌드 전에 지정합니다 (PowerShell: `$env:JAVA_HOME = "<JDK 21 경로>"`)
