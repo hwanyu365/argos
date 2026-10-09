@@ -38,7 +38,7 @@ class FamilyRepository {
     /** D#2: 기기 시계 대신 서버 시각을 기준으로 계산하기 위한 오프셋. */
     fun serverOffset(): Flow<Long> = db.getReference(".info/serverTimeOffset").values { it.getValue(Long::class.java) ?: 0L }
 
-    suspend fun serverNow(): Long = System.currentTimeMillis() + serverOffset().first()
+    suspend fun serverNow(): Long = System.currentTimeMillis() + withTimeout(TIMEOUT_MS) { serverOffset().first() }
 
     suspend fun createFamily(name: String): String {
         val uid = uid()
@@ -113,17 +113,23 @@ class FamilyRepository {
     suspend fun leave(fid: String) {
         val uid = uid()
         try {
-            withTimeout(LEAVE_TIMEOUT_MS) { db.getReference("families/$fid").updateChildren(mapOf("members/$uid" to null, "children/$uid" to null)).await() }
+            withTimeout(TIMEOUT_MS) { db.getReference("families/$fid").updateChildren(mapOf("members/$uid" to null, "children/$uid" to null)).await() }
         } catch (e: DatabaseException) {
             // 거부가 '이미 제거됨' 때문인지 확인한다. 아직 멤버라서 자기 레코드를 읽을 수 있다면 진짜 실패다.
             if (e.message?.contains("Permission denied", ignoreCase = true) != true) throw e
-            val stillMember = runCatching { db.getReference("families/$fid/members/$uid").get().await().exists() }.getOrDefault(false)
-            if (stillMember) throw e
+            if (!alreadyRemoved(runCatching { withTimeout(TIMEOUT_MS) { db.getReference("families/$fid/members/$uid").get().await().exists() } })) throw e
         }
     }
 
-    private companion object {
-        const val LEAVE_TIMEOUT_MS = 10_000L
+    companion object {
+        // RTDB 는 오프라인이면 쓰기·읽기가 끝나지 않고 대기하므로, 화면이 멈추지 않게 시간 제한을 둔다.
+        private const val TIMEOUT_MS = 10_000L
+
+        /** 탈퇴가 거부된 뒤 자기 레코드 조회 결과로 '이미 제거됨'을 판정한다. 네트워크 실패는 판정 불가라 실패로 본다. */
+        fun alreadyRemoved(read: Result<Boolean>): Boolean = read.fold(
+            onSuccess = { exists -> !exists },
+            onFailure = { it.message?.contains("permission", ignoreCase = true) == true }
+        )
     }
 
     private fun member(role: Role, name: String) = mapOf("role" to role.key, "name" to name.trim().take(40), "joinedAt" to ServerValue.TIMESTAMP)
