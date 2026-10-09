@@ -38,7 +38,7 @@ class ChildCardTest {
 
     @Test
     fun `TC#30 시계 차이로 음수가 되면 0 으로 본다`() {
-        assertEquals(0L, ChildCard.of("첫째", live, 0, emptyMap(), serverNow = 999_000).elapsedMs)
+        assertEquals(0L, ChildCard.of("첫째", live, updatedAt = 999_000, apps = emptyMap(), serverNow = 999_000).elapsedMs)
     }
 
     @Test

@@ -58,4 +58,8 @@
     <string name="unit_min">m</string>
     <string name="unit_hour">h</string>
     <string name="scan_failed">Could not read the QR code. Please type the code instead.</string>
+    <string name="liveness_ok">Active</string>
+    <string name="liveness_delayed">Delayed</string>
+    <string name="liveness_stopped">Stopped</string>
+    <string name="last_seen">Last seen: %1$s</string>
 </resources>

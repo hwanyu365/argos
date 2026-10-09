@@ -172,7 +172,24 @@ class MonitorService : Service() {
         fun start(context: Context) {
             Prefs(context).monitoring = true
             context.startForegroundService(Intent(context, MonitorService::class.java))
-            context.getSystemService(JobScheduler::class.java).schedule(
+            scheduleWatchdog(context)
+        }
+
+        /**
+         * 강제 종료(설정의 '강제 중지')는 서비스와 함께 예약된 watchdog 도 지운다.
+         * 자녀가 앱을 다시 열면 둘 다 되살린다. 화면이 떠 있을 때라 백그라운드 시작 제한도 받지 않는다.
+         */
+        fun resumeFromUi(context: Context) {
+            if (!Prefs(context).monitoring) return
+            resumeIfMonitoring(context)
+            scheduleWatchdog(context)
+        }
+
+        private fun scheduleWatchdog(context: Context) {
+            val js = context.getSystemService(JobScheduler::class.java)
+            // 다시 예약하면 주기가 처음부터 다시 시작되므로, 이미 예약돼 있으면 그대로 둔다.
+            if (js.getPendingJob(WATCHDOG_JOB) != null) return
+            js.schedule(
                 JobInfo.Builder(WATCHDOG_JOB, ComponentName(context, Watchdog::class.java)).setPeriodic(WATCHDOG_MS).setPersisted(true).build()
             )
         }

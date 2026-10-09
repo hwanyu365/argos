@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -105,7 +106,7 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(children, key = { it.uid }) { m ->
                         val c = family.live[m.uid]
-                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now)) { onOpen(m.uid) }
+                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)) { onOpen(m.uid) }
                     }
                 }
             }
@@ -125,7 +126,10 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
 private fun ChildCardView(card: ChildCard, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(card.name, style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(card.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                card.liveness?.let { LivenessBadge(it) }
+            }
             LiveLines(card)
         }
     }
@@ -133,8 +137,15 @@ private fun ChildCardView(card: ChildCard, onClick: () -> Unit) {
 
 @Composable
 private fun LiveLines(card: ChildCard) {
+    val live = card.liveness == Liveness.OK
     when {
         card.sinceUpdateMs == null -> Text(stringResource(R.string.never_updated), style = MaterialTheme.typography.bodyMedium)
+        // FR#18: 기록이 끊겼으면 '지금' 상태가 아니라 마지막으로 확인된 상태임을 밝힌다.
+        !live -> Text(
+            stringResource(R.string.last_seen, if (!card.screenOn) stringResource(R.string.screen_off) else card.appLabel ?: stringResource(R.string.no_app)),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         !card.screenOn -> Text(stringResource(R.string.screen_off), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         card.appLabel == null -> Text(stringResource(R.string.no_app), style = MaterialTheme.typography.bodyLarge)
         else -> {
@@ -144,6 +155,19 @@ private fun LiveLines(card: ChildCard) {
         }
     }
     card.sinceUpdateMs?.let { Text(stringResource(R.string.updated_ago, durationText(it)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+}
+
+/** FR#18 감시 상태 배지. 색에만 의존하지 않도록 글자로도 상태를 쓴다 (NFR#9). */
+@Composable
+private fun LivenessBadge(state: Liveness) {
+    val (label, bg, fg) = when (state) {
+        Liveness.OK -> Triple(R.string.liveness_ok, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        Liveness.DELAYED -> Triple(R.string.liveness_delayed, MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+        Liveness.STOPPED -> Triple(R.string.liveness_stopped, MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+    }
+    Surface(color = bg, contentColor = fg, shape = MaterialTheme.shapes.small) {
+        Text(stringResource(label), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+    }
 }
 
 /** FR#4: 역할을 고르면 코드를 발급하고, 닫거나 다시 발급하면 이전 코드를 지운다. */
@@ -240,8 +264,9 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
         }
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                LiveLines(ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now))
-                c?.live?.url?.takeIf { c.live.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)
+                LiveLines(card)
+                card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         }
         TextButton(onClick = { removing = true }) { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }
