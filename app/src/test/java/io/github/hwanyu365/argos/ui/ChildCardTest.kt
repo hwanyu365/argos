@@ -1,6 +1,7 @@
 package io.github.hwanyu365.argos.ui
 
 import io.github.hwanyu365.argos.child.Live
+import io.github.hwanyu365.argos.child.LivePip
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -39,6 +40,16 @@ class ChildCardTest {
     @Test
     fun `TC#30 시계 차이로 음수가 되면 0 으로 본다`() {
         assertEquals(0L, ChildCard.of("첫째", live, updatedAt = 999_000, apps = emptyMap(), serverNow = 999_000).elapsedMs)
+    }
+
+    @Test
+    fun `TC#50 PiP 앱은 이름과 경과 시간을 함께 보여주고, 기록이 끊기면 숨긴다`() {
+        val withPip = live.copy(pip = LivePip("com.google.android.youtube", null, since = 1_000_000))
+        val card = ChildCard.of("첫째", withPip, updatedAt = 1_100_000, apps = mapOf("com,google,android,youtube" to "YouTube"), serverNow = 1_125_000)
+        assertEquals("YouTube", card.pipLabel)
+        assertEquals(125_000L, card.pipElapsedMs)
+        val stale = ChildCard.of("첫째", withPip, updatedAt = 0, apps = emptyMap(), serverNow = 1_125_000)
+        assertNull(stale.pipLabel)
     }
 
     @Test

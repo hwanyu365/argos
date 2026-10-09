@@ -232,6 +232,16 @@ describe("TC#46 live 형식 검증", () => {
     for (const k of ["usage", "a11y", "notif"]) await assertFails(ref().set(live({ perms: { usage: true, a11y: false, notif: false, [k]: "yes" } })));
   });
 
+  test("PiP 앱은 pkg·label·since 만, 길이·타입이 맞을 때 쓸 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(ref().set(live({ pip: { pkg: "com.google.android.youtube", label: "YouTube", since: 1 } })));
+    await assertFails(ref().set(live({ pip: { pkg: "x".repeat(256), label: "a", since: 1 } })));
+    await assertFails(ref().set(live({ pip: { pkg: "a", label: "x".repeat(101), since: 1 } })));
+    await assertFails(ref().set(live({ pip: { pkg: "a", label: "a", since: "1" } })));
+    await assertFails(ref().set(live({ pip: { pkg: "a", label: "a", since: 1, title: "x" } })));
+    await assertFails(ref().set(live({ pip: { label: "a", since: 1 } })));
+  });
+
   test("자녀 노드에는 정의된 하위 노드만 쓸 수 있다", async () => {
     await seed(withKids());
     await assertFails(db("kidX").ref(`families/${FID}/children/kidX/blob`).set("x".repeat(1000)));

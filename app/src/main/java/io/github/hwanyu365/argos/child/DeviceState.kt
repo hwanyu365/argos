@@ -27,11 +27,13 @@ class DeviceState(private val context: Context) {
             val type = when (e.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> UsageEvent.Type.RESUMED
                 UsageEvents.Event.ACTIVITY_PAUSED -> UsageEvent.Type.PAUSED
+                UsageEvents.Event.ACTIVITY_STOPPED -> UsageEvent.Type.STOPPED
                 UsageEvents.Event.SCREEN_INTERACTIVE -> UsageEvent.Type.SCREEN_ON
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE -> UsageEvent.Type.SCREEN_OFF
                 else -> continue
             }
-            out += UsageEvent(type, e.packageName, e.timeStamp)
+            // 화면(class) 이름은 PiP 앱의 다른 화면이 숨겨지는 것과 PiP 종료를 구분하는 데 쓴다 (S#9).
+            out += UsageEvent(type, e.packageName, e.timeStamp, e.className)
         }
         return out
     }

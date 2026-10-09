@@ -1,7 +1,7 @@
 package io.github.hwanyu365.argos.child
 
-data class UsageEvent(val type: Type, val pkg: String?, val ts: Long) {
-    enum class Type { RESUMED, PAUSED, SCREEN_ON, SCREEN_OFF }
+data class UsageEvent(val type: Type, val pkg: String?, val ts: Long, val cls: String? = null) {
+    enum class Type { RESUMED, PAUSED, STOPPED, SCREEN_ON, SCREEN_OFF }
 }
 
 data class Detail(val title: String? = null, val url: String? = null) {
@@ -12,6 +12,9 @@ data class OpenSession(val pkg: String, val start: Long, val detail: Detail = De
 
 data class Session(val pkg: String, val start: Long, val end: Long, val title: String? = null, val url: String? = null)
 
+/** 멈췄지만 숨겨지지 않은 앱(PiP). [cls] 는 멈춘 화면, [handoff] 는 다른 앱이 앞으로 온 시각이다. */
+data class Pip(val open: OpenSession, val cls: String?, val handoff: Long)
+
 /**
  * UsageEvents 를 세션으로 바꾼다 (spec §6.1 S#1~S#8).
  * OS 가 이벤트를 보관하므로 lastEventTs 와 current 만 저장해 두면 프로세스가 죽어도 이어서 만들 수 있다.
@@ -19,13 +22,18 @@ data class Session(val pkg: String, val start: Long, val end: Long, val title: S
 class SessionBuilder(
     private val excluded: Set<String>,
     lastEventTs: Long = 0,
-    current: OpenSession? = null
+    current: OpenSession? = null,
+    pip: Pip? = null
 ) {
     var lastEventTs = lastEventTs
         private set
     var current = current
         private set
-    private var pausedAt: Long? = null
+    var pip = pip
+        private set
+
+    // 현재 앱이 멈춘 시각과 화면. 다른 앱이 뜰 때 PiP 후보인지 판단하는 데 쓴다.
+    private var paused: Pair<Long, String?>? = null
 
     fun feed(events: List<UsageEvent>): List<Session> {
         val closed = mutableListOf<Session>()
@@ -33,8 +41,12 @@ class SessionBuilder(
         for (e in events.sortedBy { it.ts }.filter { it.ts >= lastEventTs }) {
             when (e.type) {
                 UsageEvent.Type.RESUMED -> onResumed(e.pkg ?: continue, e.ts, closed)
-                UsageEvent.Type.PAUSED -> if (e.pkg == current?.pkg) pausedAt = e.ts
-                UsageEvent.Type.SCREEN_OFF -> close(pausedAt ?: e.ts, closed)
+                UsageEvent.Type.PAUSED -> if (e.pkg == current?.pkg) paused = e.ts to e.cls
+                UsageEvent.Type.STOPPED -> onStopped(e.pkg, e.cls, e.ts, closed)
+                UsageEvent.Type.SCREEN_OFF -> {
+                    close(paused?.first ?: e.ts, closed)
+                    closePip(e.ts, closed)
+                }
                 UsageEvent.Type.SCREEN_ON -> Unit
             }
             lastEventTs = e.ts
@@ -49,7 +61,8 @@ class SessionBuilder(
     fun skipGap(from: Long) {
         if (lastEventTs >= from) return
         current = null
-        pausedAt = null
+        pip = null
+        paused = null
         lastEventTs = from
     }
 
@@ -67,24 +80,62 @@ class SessionBuilder(
         return closed
     }
 
+    /** 실시간 표시용. 일반 전환에서도 숨김까지 1초 남짓 걸리므로 그보다 오래 남은 경우만 PiP 로 보여준다. */
+    fun visiblePip(now: Long): OpenSession? = pip?.takeIf { now - it.handoff >= PIP_MIN_MS }?.open
+
     private fun onResumed(pkg: String, ts: Long, closed: MutableList<Session>) {
-        if (pkg == current?.pkg) {
-            pausedAt = null
+        val p = pip
+        // PiP 로 보던 앱을 다시 크게 열면 같은 세션을 이어 간다.
+        if (p != null && pkg == p.open.pkg) {
+            close(ts, closed)
+            current = p.open
+            pip = null
             return
         }
-        close(ts, closed)
+        if (pkg == current?.pkg) {
+            paused = null
+            return
+        }
+        val open = current
+        val pz = paused
+        // S#9: 멈춘 채 다른 앱이 떴다. 숨겨지는지(STOPPED) 볼 때까지 PiP 후보로 남긴다. PiP 는 한 번에 하나뿐이다.
+        if (open != null && pz != null && p == null) {
+            pip = Pip(open, pz.second, ts)
+            current = null
+            paused = null
+        } else {
+            close(ts, closed)
+        }
         if (pkg !in excluded) current = OpenSession(pkg, ts)
+    }
+
+    private fun onStopped(pkg: String?, cls: String?, ts: Long, closed: MutableList<Session>) {
+        val p = pip ?: return
+        // PiP 앱의 다른 화면이 숨겨지는 것은 PiP 종료가 아니다.
+        if (pkg != p.open.pkg || (p.cls != null && cls != null && cls != p.cls)) return
+        closePip(ts, closed)
+    }
+
+    private fun closePip(ts: Long, closed: MutableList<Session>) {
+        val p = pip ?: return
+        // 앞 앱이 뜬 뒤 곧바로 숨겨졌다면 PiP 가 아니라 일반 전환이었다 → 앞 앱이 뜬 시각에 닫는다.
+        val end = if (ts - p.handoff < PIP_MIN_MS) p.handoff else ts
+        if (end - p.open.start >= MIN_SESSION_MS) closed += Session(p.open.pkg, p.open.start, end, p.open.detail.title, p.open.detail.url)
+        pip = null
     }
 
     private fun close(end: Long, closed: MutableList<Session>) {
         val open = current ?: return
         if (end - open.start >= MIN_SESSION_MS) closed += Session(open.pkg, open.start, end, open.detail.title, open.detail.url)
         current = null
-        pausedAt = null
+        paused = null
     }
 
     private companion object {
         // S#6: 앱 전환 중 순간 노출은 사용으로 보지 않는다.
         const val MIN_SESSION_MS = 1_000L
+
+        // S#9: 일반 전환에서 이전 앱이 숨겨지기까지의 여유. 실측 약 0.5~1초.
+        const val PIP_MIN_MS = 3_000L
     }
 }

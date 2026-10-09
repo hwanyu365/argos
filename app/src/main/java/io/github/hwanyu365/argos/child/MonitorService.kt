@@ -87,7 +87,7 @@ class MonitorService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun restoredBuilder() = SessionBuilder(device.excludedPackages(), prefs.lastEventTs, prefs.openSession)
+    private fun restoredBuilder() = SessionBuilder(device.excludedPackages(), prefs.lastEventTs, prefs.openSession, prefs.pip)
 
     private fun step() {
         val now = System.currentTimeMillis()
@@ -105,9 +105,11 @@ class MonitorService : Service() {
         }
         prefs.lastEventTs = builder.lastEventTs
         prefs.openSession = builder.current
+        prefs.pip = builder.pip
 
         val open = builder.current
-        val live = Live(open?.pkg, open?.pkg?.let(device::label), open?.start, open?.detail?.title, open?.detail?.url, device.screenOn)
+        val pip = builder.visiblePip(now)?.let { LivePip(it.pkg, device.label(it.pkg), it.start) }
+        val live = Live(open?.pkg, open?.pkg?.let(device::label), open?.start, open?.detail?.title, open?.detail?.url, device.screenOn, pip)
         if (LiveReporter.shouldUpload(live, lastLive, lastSentAt, now) && upload(live)) {
             lastLive = live
             lastSentAt = now
@@ -131,6 +133,7 @@ class MonitorService : Service() {
                 "title" to live.title?.take(300),
                 "url" to live.url?.take(2048),
                 "screenOn" to live.screenOn,
+                "pip" to live.pip?.let { mapOf("pkg" to it.pkg, "label" to it.label?.take(100), "since" to it.since) },
                 "updatedAt" to ServerValue.TIMESTAMP,
                 "perms" to mapOf("usage" to perms.usage, "a11y" to perms.accessibility, "notif" to perms.notificationListener)
             )

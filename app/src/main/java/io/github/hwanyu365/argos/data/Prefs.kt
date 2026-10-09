@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import io.github.hwanyu365.argos.child.Detail
 import io.github.hwanyu365.argos.child.OpenSession
+import io.github.hwanyu365.argos.child.Pip
 
 enum class Role {
     PARENT,
@@ -44,5 +45,15 @@ class Prefs(context: Context) {
             putLong("open.start", v?.start ?: 0)
             putString("open.title", v?.detail?.title)
             putString("open.url", v?.detail?.url)
+        }
+
+    /** 재시작 후에도 PiP 를 이어서 닫을 수 있게 저장한다 (S#8, S#9). */
+    var pip: Pip?
+        get() = sp.getString("pip.pkg", null)?.let { Pip(OpenSession(it, sp.getLong("pip.start", 0)), sp.getString("pip.cls", null), sp.getLong("pip.handoff", 0)) }
+        set(v) = sp.edit {
+            putString("pip.pkg", v?.open?.pkg)
+            putLong("pip.start", v?.open?.start ?: 0)
+            putString("pip.cls", v?.cls)
+            putLong("pip.handoff", v?.handoff ?: 0)
         }
 }

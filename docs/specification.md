@@ -108,6 +108,7 @@
 
 **부모 화면 (UC1~UC4)**
 - `FR#15` 자녀 목록에서 자녀마다 현재 앱(아이콘·이름), 현재 세션 경과 시간, 그 앱의 오늘 누적 시간, 상세(title/url), 감시 상태를 표시하고 실시간 갱신한다 [요구사항]
+  - PiP 앱이 있으면 "PiP: {앱} n분째" 를 함께 보여준다 (S#9). 기록이 끊기면 숨긴다
   - UC1 은 현재 앱·경과 시간·상세·마지막 확인 시각까지. 오늘 누적은 일별 집계(UC2), 감시 상태 배지는 UC4 에서 붙인다
 - `FR#16` 자녀 상세의 "기간" 탭은 기본 최근 30일의 앱별 합계를 내림차순으로 표시하고, 일별 총 사용 시간 막대 차트를 표시한다. 기간은 오늘/7일/30일/직접 선택으로 바꿀 수 있다 [요구사항]
 - `FR#17` 자녀 상세의 "타임라인" 탭은 선택한 날짜의 세션을 시간순으로 앱·시작~종료·title/url 과 함께 표시한다 [요구사항]
@@ -142,7 +143,7 @@
 ```
 pairing/{code}                                   { familyId, role: "parent"|"child", expiresAt }
 families/{fid}/members/{uid}                     { role: "parent"|"child", name, joinedAt, code? }
-families/{fid}/children/{uid}/live               { pkg?, label?, since?, title?, url?, screenOn, updatedAt, perms: { usage, a11y, notif } }
+families/{fid}/children/{uid}/live               { pkg?, label?, since?, title?, url?, screenOn, updatedAt, perms: { usage, a11y, notif }, pip?: { pkg, label?, since } }
 families/{fid}/children/{uid}/daily/{yyyy-MM-dd}/{pkgKey}     seconds (number)
 families/{fid}/children/{uid}/timeline/{yyyy-MM-dd}/{sessionId} { pkg, start, end, title?, url? }
 families/{fid}/apps/{pkgKey}                     { label }
@@ -167,6 +168,7 @@ families/{fid}/apps/{pkgKey}                     { label }
   - 자녀 본인 삭제는 초기화(FR#1) 때 멤버 레코드와 함께 기록을 지우기 위함
   - 하위 노드는 스펙에 정의된 것만 허용한다 (현재 `live`. `daily`·`timeline` 은 UC2·UC3 에서 추가)
   - `live` 는 `screenOn`·`updatedAt`(서버 시각)·`perms{usage,a11y,notif}` 필수, `pkg` ≤255·`label` ≤100·`title` ≤300·`url` ≤2048자, 그 밖의 필드는 거부
+  - `live.pip` 는 `pkg`(≤255)·`since` 필수, `label` ≤100, 그 밖의 필드는 거부
   - Why: 자녀 기기 클라이언트는 변조될 수 있으므로 임의 크기 데이터로 무료 저장 한도(1GB)를 소진하지 못하게 한다. 클라이언트는 상한에 맞춰 잘라서 보낸다
 - `R#4` `pairing/{code}` 생성 → 해당 가족의 부모 멤버만. 읽기 → 인증된 사용자가 코드를 정확히 알 때만 (목록 조회 금지)
   - 키는 D#4 형식만, `role` 필수, `expiresAt` 은 `now < expiresAt ≤ now + 11분` (서버 시각 기준)
@@ -221,6 +223,12 @@ flowchart TD
 - `S#7` 진행 중 세션에서 title 또는 url 이 바뀌면 그 시각에 세션을 닫고 같은 패키지로 새 세션을 연다 → 타임라인이 영상·페이지 단위로 나뉨
   - 상세가 없던 세션에 처음 붙는 상세는 나누지 않고 그 세션에 붙인다. 상세가 사라지는 변화(값 → 없음)는 나눈다
   - Why: 미디어 메타데이터는 앱이 뜬 뒤 수 초 늦게 오므로, 매번 나누면 상세 없는 짧은 조각이 생김
+- `S#9` PiP: 현재 앱이 멈춘(`PAUSED`) 채 다른 앱이 앞으로 오고, 3초 안에 그 화면이 숨겨지지(`STOPPED`) 않으면 PiP 로 본다
+  - PiP 세션은 숨겨지는 시각에 닫는다. 3초 안에 숨겨지면 일반 전환이므로 앞 앱이 뜬 시각에 닫는다
+  - 같은 앱의 다른 화면(class)이 숨겨지는 것은 PiP 종료가 아니다. PiP 앱을 다시 크게 열면 같은 세션으로 이어진다
+  - 화면이 꺼지면 현재 앱과 PiP 를 함께 닫는다. PiP 는 한 번에 하나만 추적한다 (Android 도 하나만 허용)
+  - 실측: PiP 진입 시 `ACTIVITY_PAUSED` 뒤 `ACTIVITY_STOPPED` 가 오지 않고 `mode=pinned` (GH-26, Android 16). 일반 전환은 0.5~1초 안에 `STOPPED`
+  - 사용 시간은 앱별로 각각 센다(PiP 와 현재 앱이 겹쳐도 둘 다). 하루 총 사용 시간은 겹치는 구간을 한 번만 센다(UC2) — 저장소 소유자 결정 (GH-26)
 - `S#8` 처리 후 `lastEventTs` 를 마지막 이벤트 시각으로 갱신한다. 재시작 시 OS 보관 범위를 넘는 과거는 복구하지 않는다
   - 소급 범위(24시간)보다 오래 끊겼으면 복원한 진행 중 세션은 끝을 알 수 없으므로 버린다 → 사용 시간을 부풀리지 않음
 - 실측: 앱 실행 후 사용 이벤트 노출까지 633~727ms (Galaxy S24+, Android 16, adb 왕복 포함 3회, GH-1) → 3초 폴링으로 NFR#2 충족
@@ -335,10 +343,11 @@ stateDiagram-v2
 | TC#43 | FR#12, §6.4 | 자녀 기기 화면 끈 채 8시간(밤) / 부모가 live 조회 / `updatedAt` 간격이 5분을 넘지 않음 | (통합) |
 | TC#44 | X#0 | 지원 브라우저·Shorts 외 앱의 접근성 이벤트 / 추출 / 아무것도 반환·저장하지 않음 | |
 | TC#45 | R#6 | 자녀 / 앱 이름 쓰기 / 허용. 부모·외부인, 빈 값·101자·추가 필드 / 거부 | rules |
-| TC#46 | R#3 | 유효 live·화면 꺼짐 live / 쓰기 / 허용. 필수 필드 누락, 클라이언트 updatedAt, 정의 외 필드, 길이 초과(pkg·label·title·url), 타입 불일치(screenOn·since·perms), 정의 외 하위 노드 / 거부 | rules |
+| TC#46 | R#3 | 유효 live·화면 꺼짐 live / 쓰기 / 허용. 필수 필드 누락, 클라이언트 updatedAt, 정의 외 필드, 길이 초과(pkg·label·title·url), 타입 불일치(screenOn·since·perms), 정의 외 하위 노드, pip 필수 필드·길이·타입·정의 외 필드 / 거부 | rules |
 | TC#47 | FR#4 | 발급 후 재발급, 발급 중 재발급, 닫은 뒤 늦게 끝난 발급 / 코드 수명 관리 / 보이는 코드 외 모두 삭제 대상. 실기기: 재발급으로 지운 코드로 참여 / 거부 | 통합 일부 |
 | TC#48 | FR#5 | QR 원문(소문자·하이픈·혼동 문자·초과 길이) / 스캔 입력 / 정규화 후 10자리 | |
 | TC#49 | FR#19 | 자녀가 런처 앱(YouTube 등) 사용 / 부모 카드 / 패키지명이 아닌 앱 이름 표시 | (통합) |
+| TC#50 | S#9, FR#15 | PiP 진입·일반 전환(3초 안 숨김)·다른 화면 숨김·다시 크게 열기·화면 꺼짐·홈 화면 위 PiP·PiP 중 일반 전환·재시작 복원 / 세션 빌드 / PiP 세션 유지·닫기 시각. 카드 / PiP 이름·경과 표시, 끊기면 숨김. 실기기 PiP 상태에서 다른 앱 / 부모 카드에 두 앱 | 통합 일부 |
 
 ## 부록. 변경 이력
 
@@ -350,3 +359,4 @@ stateDiagram-v2
 | GH-17 | 자녀 수집 구현: S#7 상세 첫 부착 규칙, R#3 live 형식·길이 검증 (TC#46) |
 | GH-18 | 화면: 시작(가족 만들기·코드 참여)·참여·보호자 홈·초대·자녀 상세·권한 안내·감시 상태. FR#1 역할은 코드가 정함, 초대 코드 정리 |
 | GH-24 | UC4 감시 상태 배지(정상·지연·중단), 끊긴 기록은 '마지막' 으로 표시. 상세 제한은 UC3 로 |
+| GH-26 | S#9 PiP 추적(실시간 표시·앱별 집계), live.pip 와 R#3 검증 |

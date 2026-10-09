@@ -9,6 +9,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import io.github.hwanyu365.argos.child.Live
+import io.github.hwanyu365.argos.child.LivePip
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.channels.awaitClose
@@ -88,7 +89,10 @@ class FamilyRepository {
                             since = l.child("since").getValue(Long::class.java),
                             title = l.child("title").getValue(String::class.java),
                             url = l.child("url").getValue(String::class.java),
-                            screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false
+                            screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false,
+                            pip = l.child("pip/pkg").getValue(String::class.java)?.let { pkg ->
+                                LivePip(pkg, l.child("pip/label").getValue(String::class.java), l.child("pip/since").getValue(Long::class.java) ?: 0)
+                            }
                         )
                     } else {
                         null
