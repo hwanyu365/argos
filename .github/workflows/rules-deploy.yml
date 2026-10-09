@@ -26,9 +26,17 @@ jobs:
       - run: npm --prefix firebase ci
       # 규칙이 보안의 전부이므로 테스트를 통과한 경우에만 배포한다.
       - run: npm --prefix firebase test
-      - uses: google-github-actions/auth@v2
+      # secret 이 없으면(미등록, dependabot·fork 트리거) 실패 대신 건너뛴다.
+      - id: secret
+        env:
+          TOKEN: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "::notice::FIREBASE_SERVICE_ACCOUNT 미등록 → 건너뜀"; fi
+      - if: steps.secret.outputs.ok == 'true'
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-      - run: npx --prefix firebase firebase deploy --only database --project "$PROJECT_ID" --non-interactive
+      - if: steps.secret.outputs.ok == 'true'
+        run: npx --prefix firebase firebase deploy --only database --project "$PROJECT_ID" --non-interactive
         env:
           PROJECT_ID: ${{ secrets.ARGOS_FIREBASE_PROJECT_ID }}
