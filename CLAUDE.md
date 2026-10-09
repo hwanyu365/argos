@@ -72,7 +72,8 @@ npm --prefix firebase test # 보안 규칙 (Firebase Emulator)
 - 이 프로젝트는 agent 자동화 개발이다 → 전역 규칙(커밋·PR 은 지시 시에만)을 대체한다
   - 하위 이슈가 끝나면 묻지 않고 커밋 → draft PR → CI·Claude 리뷰 반영 → ready → merge
   - 보고는 상위 이슈(UC) 단위로 한다
-  - 예외(먼저 묻는다): 스펙에 없는 결정, 비용·보안 설정 변경, 실사용 기기의 데이터 삭제
+  - 예외(먼저 묻는다): 스펙에 없는 결정, 비용 발생, Firebase·GCP 콘솔·IAM·Secrets 변경, 실사용 기기의 데이터 삭제
+  - `database.rules.json` 변경은 스펙 §4.3 을 구현하는 범위면 예외가 아니다. 대신 규칙 조건마다 `rules.test.js` 테스트를 두고, 조건을 지우면 테스트가 실패하는지 확인한 뒤 merge 한다
 - `main` 은 보호 브랜치다 (CI `android`·`rules` 필수, PR 로만 merge, 관리자 포함)
 - 하위 이슈 브랜치는 `feat/GH-{상위}-{하위}`, 커밋 1행은 `feat:[GH-{상위}][GH-{하위}] ...`
 - `database.rules.json` 이 main 에 merge 되면 실제 Firebase 프로젝트에 자동 배포된다

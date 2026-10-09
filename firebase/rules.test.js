@@ -214,3 +214,24 @@ describe("TC#10 기기 제거", () => {
     await assertFails(db("kidX").ref(`families/${FID}/members/kidY`).remove());
   });
 });
+
+describe("TC#45 앱 이름 공유", () => {
+  test("자녀는 앱 이름을 쓸 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("kidX").ref(`families/${FID}/apps/com,google,android,youtube`).set({ label: "YouTube" }));
+  });
+
+  test("부모·외부인은 앱 이름을 쓸 수 없다", async () => {
+    await seed(withKids());
+    await assertFails(db("parent1").ref(`families/${FID}/apps/a,b`).set({ label: "x" }));
+    await assertFails(db("stranger").ref(`families/${FID}/apps/a,b`).set({ label: "x" }));
+  });
+
+  test("label 은 1~100자 문자열만, 다른 필드는 쓸 수 없다", async () => {
+    await seed(withKids());
+    const ref = db("kidX").ref(`families/${FID}/apps/a,b`);
+    await assertFails(ref.set({ label: "" }));
+    await assertFails(ref.set({ label: "x".repeat(101) }));
+    await assertFails(ref.set({ label: "x", extra: 1 }));
+  });
+});

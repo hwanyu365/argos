@@ -32,7 +32,10 @@
         },
         "apps": {
           "$pkgKey": {
-            ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child'"
+            ".write": "auth != null && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child'",
+            ".validate": "newData.hasChildren(['label'])",
+            "label": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+            "$other": { ".validate": false }
           }
         }
       }
