@@ -37,6 +37,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - if: steps.secret.outputs.ok == 'true'
-        run: npx --prefix firebase firebase deploy --only database --project "$PROJECT_ID" --non-interactive
+        run: npm --prefix firebase exec -- firebase deploy --only database --project "$PROJECT_ID" --non-interactive
         env:
           PROJECT_ID: ${{ secrets.ARGOS_FIREBASE_PROJECT_ID }}

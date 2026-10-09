@@ -49,8 +49,8 @@ jobs:
       - name: Distribute to testers
         env:
           APP_ID: ${{ secrets.ARGOS_FIREBASE_APP_ID }}
-          # 테스터 그룹 alias 는 저장소 변수로 둔다. 이메일은 Firebase 콘솔에만 있다.
-          GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'family' }}
+          # 테스터 그룹 alias 는 저장소 변수로 둔다. 이메일은 Firebase 콘솔에만 있다. GROUPS 는 bash 예약 변수라 쓰지 않는다.
+          TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'family' }}
         run: |
           git log -1 --format='%s' > notes.txt
-          npx --prefix firebase firebase appdistribution:distribute app/build/outputs/apk/release/app-release.apk --app "$APP_ID" --groups "$GROUPS" --release-notes-file notes.txt
+          npm --prefix firebase exec -- firebase appdistribution:distribute app/build/outputs/apk/release/app-release.apk --app "$APP_ID" --groups "$TESTER_GROUPS" --release-notes-file notes.txt

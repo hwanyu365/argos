@@ -21,8 +21,8 @@
 
    ```sh
    npm --prefix firebase ci
-   npx --prefix firebase firebase login
-   npx --prefix firebase firebase deploy --only database --project <프로젝트 ID>
+   npm --prefix firebase exec -- firebase login
+   npm --prefix firebase exec -- firebase deploy --only database --project <프로젝트 ID>
    ```
 6. (권장) **Android key** 를 argos 앱으로만 쓸 수 있게 제한합니다
    1. 서명 키의 SHA-1 확인: `./gradlew signingReport` (debug 키, `local.properties` 의 release 키)
