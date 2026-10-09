@@ -1,9 +1,9 @@
 <resources>
     <string name="firebase_missing_title">Firebase setup required</string>
     <string name="firebase_missing_body">This app runs on your own Firebase project.\nFollow the setup guide in README, put ARGOS_FIREBASE_* values into local.properties and rebuild.</string>
-    <string name="monitor_channel">Monitoring status</string>
-    <string name="monitor_title">Argos is monitoring</string>
-    <string name="monitor_text">A guardian can see app usage on this device</string>
+    <string name="monitor_channel">Argos status</string>
+    <string name="monitor_title">Argos is protecting this device</string>
+    <string name="monitor_text">Keeping this device safe together with your family</string>
     <string name="welcome_title">Your child\'s app use at a glance</string>
     <string name="welcome_body">Create a family on a guardian\'s device, then join from your child\'s device with an invite code.</string>
     <string name="create_family">Create a family</string>
@@ -40,7 +40,7 @@
     <string name="reset">Reset</string>
     <string name="reset_confirm">Clears this device\'s role and family link and returns to the start screen.</string>
     <string name="permissions_title">Required permissions</string>
-    <string name="permissions_body">Allow all of these to start monitoring.</string>
+    <string name="permissions_body">Allow all of these to start protection.</string>
     <string name="perm_usage">Usage access</string>
     <string name="perm_usage_desc">Shows which app is in use</string>
     <string name="perm_post">Notifications</string>
@@ -49,10 +49,10 @@
     <string name="perm_battery_desc">Keeps monitoring running in the background</string>
     <string name="granted">Allowed</string>
     <string name="allow">Allow</string>
-    <string name="start_monitoring">Start monitoring</string>
-    <string name="status_title">Monitoring</string>
-    <string name="status_body">A guardian can see app usage on this device.</string>
-    <string name="perms_missing">A required permission is off, so recording has stopped.</string>
+    <string name="start_monitoring">Start protection</string>
+    <string name="status_title">Protected</string>
+    <string name="status_body">Keeping this device safe together with your family.\nIf you have questions, ask your guardian.</string>
+    <string name="perms_missing">A required permission is off, so protection has paused.</string>
     <string name="fix_permissions">Allow again</string>
     <string name="unit_sec">s</string>
     <string name="unit_min">m</string>

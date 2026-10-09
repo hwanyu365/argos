@@ -215,9 +215,15 @@ private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> U
         dismissButton = { TextButton(onClick = ::issue) { Text(stringResource(R.string.reissue)) } },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SingleChoiceSegmentedButtonRow {
+                // 다이얼로그 폭이 좁아 체크 아이콘까지 그리면 글자가 줄바꿈되며 버튼이 타원형으로 늘어난다 → 아이콘 없이 한 줄로.
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     listOf(Role.CHILD to R.string.invite_child, Role.PARENT to R.string.invite_parent).forEachIndexed { i, (r, label) ->
-                        SegmentedButton(selected = role == r, onClick = { role = r }, shape = SegmentedButtonDefaults.itemShape(i, 2)) { Text(stringResource(label)) }
+                        SegmentedButton(
+                            selected = role == r,
+                            onClick = { role = r },
+                            shape = SegmentedButtonDefaults.itemShape(i, 2),
+                            icon = {}
+                        ) { Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
                 val c = shown?.first
