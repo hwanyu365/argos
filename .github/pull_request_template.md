@@ -16,6 +16,7 @@
 
 - [ ] `./gradlew check`
 - [ ] `npm --prefix firebase test` (규칙 변경 시)
+- [ ] 규칙 mutation 확인 (규칙 변경 시): 지운 조건 → 실패한 테스트
 - [ ] 실기기 확인 (통합 TC 해당 시):
 
 ## 구조 변경 (해당 시)
