@@ -67,7 +67,7 @@ class MonitorService : Service() {
         prefs = Prefs(this)
         device = DeviceState(this)
         store = SessionStore(this)
-        builder = SessionBuilder(device.excludedPackages(), prefs.lastEventTs, prefs.openSession)
+        builder = restoredBuilder()
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
     }
 
@@ -87,13 +87,22 @@ class MonitorService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun restoredBuilder() = SessionBuilder(device.excludedPackages(), prefs.lastEventTs, prefs.openSession)
+
     private fun step() {
         val now = System.currentTimeMillis()
         // 처음이거나 오래 꺼져 있었으면 OS 보관 범위 안에서만 소급한다 (S#8).
         builder.skipGap(now - BACKFILL_MS)
         val from = builder.lastEventTs
         // insert 후 커서 저장 전에 죽으면 같은 세션이 다시 들어오지만, SessionStore 가 (pkg, start) 중복을 무시한다.
-        store.insert(builder.feed(device.events(from, now)))
+        val closed = builder.feed(device.events(from, now))
+        try {
+            store.insert(closed)
+        } catch (e: Exception) {
+            // 메모리 커서는 이미 전진했으므로, 저장된 커서로 되돌려 다음 tick 에 같은 구간을 다시 처리한다.
+            builder = restoredBuilder()
+            throw e
+        }
         prefs.lastEventTs = builder.lastEventTs
         prefs.openSession = builder.current
 

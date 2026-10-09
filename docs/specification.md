@@ -115,6 +115,7 @@
 - `NFR#6` **투명성:** 자녀 기기에는 감시 중임을 알리는 상시 알림이 표시된다 (숨김 모드 없음) [요구사항]
   - Why: Android Foreground Service 가 알림을 강제하며, 숨겨서 감시하는 기능은 스파이웨어와 구분되지 않음
 - `NFR#7` **배터리:** 화면이 꺼진 동안에는 이벤트 폴링을 멈추고 heartbeat 만 유지한다 [요구사항]
+  - 화면이 켜지면 heartbeat 주기를 기다리지 않고 즉시 3초 폴링으로 돌아간다 → NFR#2 유지
 - `NFR#8` **호환성:** Android 8.0 (API 26) 이상 [요구사항]
 - `NFR#9` **UI:** Material 3, 라이트·다크 테마, 한국어 기본 + 영어 리소스, TalkBack 으로 주요 정보를 읽을 수 있다 [요구사항]
 
@@ -308,7 +309,7 @@ stateDiagram-v2
 | TC#30 | FR#15 | live·daily 스냅샷 / 카드 상태 계산 / 경과 시간·오늘 누적 정확 | |
 | TC#31 | FR#16 | 30일 daily / 기간 집계 / 앱별 합계 내림차순, 일별 합계 30개 | |
 | TC#32 | FR#17 | timeline / 날짜 선택 / 시작 시각 오름차순 | |
-| TC#33 | NFR#7 | SCREEN_OFF 이후 / 폴링 스케줄 / 폴링 중지, heartbeat 유지 | |
+| TC#33 | NFR#7 | SCREEN_OFF 이후 / 폴링 스케줄 / 폴링 중지, heartbeat 유지. 화면 켜짐 / 앱 실행 / 5초 안에 진행 중 세션 갱신 (통합) | |
 | TC#34 | NFR#5 | 저장소 / `git ls-files` / `local.properties`, `.firebaserc`, `*.jks`, `google-services.json` 없음 | CI |
 | TC#35 | FR#8, FR#9, NFR#6 | 감시 시작 후 재부팅 / 부팅 완료 / 서비스·상시 알림 자동 복구 | (통합) |
 | TC#36 | NFR#2 | 양쪽 온라인 / 자녀 앱 전환 / 5초 안에 부모 카드 갱신 | (통합) |
