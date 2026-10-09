@@ -22,7 +22,7 @@ jobs:
         run: |
           leaked=$(git ls-files | grep -E '(^|/)(local\.properties|\.firebaserc|google-services\.json)$|\.(jks|keystore)$' || true)
           if [ -n "$leaked" ]; then echo "::error::committed secret files: $leaked"; exit 1; fi
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
