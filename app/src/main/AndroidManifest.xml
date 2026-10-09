@@ -10,6 +10,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- 앱 이름을 보여주려면 Android 11+ 패키지 가시성이 필요하다. 사용 기록에 잡히는 앱은 대부분 런처 앱이므로 전체 패키지(QUERY_ALL_PACKAGES) 대신 런처 앱만 본다. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
     <!-- 사이드로드 전용 앱이라 Play 정책 대상이 아니다. 감시가 끊기면 기록이 비므로 필수 권한이다 (FR#7). -->
     <uses-permission
         android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"

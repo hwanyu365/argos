@@ -84,6 +84,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
+    implementation(libs.zxing.core)
+    implementation(libs.code.scanner)
 
     testImplementation(libs.junit)
 }

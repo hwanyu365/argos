@@ -22,7 +22,8 @@
 ## 기술 스택
 
 - Kotlin, Jetpack Compose + Material 3, 단일 `app` 모듈, minSdk 26 / targetSdk 35
-- Firebase Auth(Anonymous) + Realtime Database, Compose Navigation, ZXing
+- Firebase Auth(Anonymous) + Realtime Database, ZXing core(QR 생성), Google 코드 스캐너(QR 스캔, 카메라 권한 불필요)
+- 화면 전환은 Navigation 라이브러리 없이 `ui/Route.kt` 상태로 한다 (화면 수가 적음)
 - 로컬 저장: 플랫폼 `SQLiteOpenHelper`, 주기 작업: 플랫폼 `JobScheduler` → AGP 9·Kotlin 2.4 에서 KSP·Room 의존을 피하려는 선택. 테이블·작업이 늘면 Room·WorkManager 로 옮긴다
 - debug 빌드는 패키지가 `io.github.hwanyu365.argos.debug` 다 (App Distribution release 와 한 기기에 함께 설치)
 - 실기기 검증용 debug 전용 훅: `app/src/debug/.../DebugControl.kt`

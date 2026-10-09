@@ -5,7 +5,13 @@ import androidx.core.content.edit
 import io.github.hwanyu365.argos.child.Detail
 import io.github.hwanyu365.argos.child.OpenSession
 
-enum class Role { PARENT, CHILD }
+enum class Role {
+    PARENT,
+    CHILD
+    ;
+
+    companion object
+}
 
 /** 기기에 남는 작은 상태. 세션 목록은 SessionStore 가 맡는다. */
 class Prefs(context: Context) {
@@ -23,6 +29,9 @@ class Prefs(context: Context) {
     var monitoring: Boolean
         get() = sp.getBoolean("monitoring", false)
         set(v) = sp.edit { putBoolean("monitoring", v) }
+
+    /** FR#1 초기화: 역할·가족·수집 커서를 모두 지운다. */
+    fun clear() = sp.edit { clear() }
 
     var lastEventTs: Long
         get() = sp.getLong("lastEventTs", 0)
