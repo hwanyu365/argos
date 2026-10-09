@@ -6,8 +6,8 @@ on:
 
 jobs:
   review:
-    # fork PR 은 secret 이 없고 외부 입력이므로 같은 저장소 브랜치만 리뷰한다.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # fork PR 은 secret 이 없고 외부 입력이므로 같은 저장소 브랜치만 리뷰한다. dependabot PR 에도 secret 이 전달되지 않는다.
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,10 +15,18 @@ jobs:
       issues: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      # secret 이 없으면(미등록, dependabot·fork 트리거) 실패 대신 건너뛴다.
+      - id: secret
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "::notice::CLAUDE_CODE_OAUTH_TOKEN 미등록 → 건너뜀"; fi
+      - if: steps.secret.outputs.ok == 'true'
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - uses: anthropics/claude-code-action@v1
+      - if: steps.secret.outputs.ok == 'true'
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
