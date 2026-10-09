@@ -22,7 +22,7 @@ jobs:
         run: |
           if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "::notice::CLAUDE_CODE_OAUTH_TOKEN 미등록 → 건너뜀"; fi
       - if: steps.secret.outputs.ok == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - if: steps.secret.outputs.ok == 'true'

@@ -37,7 +37,7 @@ jobs:
         run: |
           if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "::notice::CLAUDE_CODE_OAUTH_TOKEN 미등록 → 건너뜀"; fi
       - if: steps.secret.outputs.ok == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
       # agent 가 CLAUDE.md 의 검증 명령을 직접 돌릴 수 있도록 로컬과 같은 런타임을 준비한다.
