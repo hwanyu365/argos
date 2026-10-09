@@ -5,6 +5,9 @@ import java.time.LocalDate
 
 /** FR#16 기간 탭에 보여줄 값. 날짜는 자녀 기기 시간대 기준으로 올라온 키를 그대로 쓴다 (D#3). */
 data class PeriodSummary(val apps: List<Pair<String, Long>>, val bars: List<Pair<LocalDate, Long>>, val totalSec: Long) {
+    // 하루 총합이 빠진 날이 있어도 앱별 기록이 있으면 '기록 없음'이 아니다.
+    val isEmpty get() = totalSec == 0L && apps.isEmpty()
+
     companion object {
         fun of(daily: Map<LocalDate, Map<String, Long>>, totals: Map<LocalDate, Long>, today: LocalDate, days: Int): PeriodSummary {
             val range = (days - 1 downTo 0).map { today.minusDays(it.toLong()) }

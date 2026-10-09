@@ -50,7 +50,9 @@ private val PERIODS = listOf(1 to R.string.period_today, 7 to R.string.period_7,
 /** FR#16: 기간별 앱 사용 합계와 일별 총 사용 시간. 기본은 30일이다. */
 @Composable
 internal fun PeriodTab(repo: FamilyRepository, fid: String, uid: String, apps: Map<String, String>) {
-    val usage by remember(fid, uid) { repo.usage(fid, uid).catch { emit(FamilyRepository.Usage(emptyMap(), emptyMap())) } }.collectAsState(null)
+    // 구독 오류를 빈 기록으로 바꾸면 '사용하지 않음'으로 오해되므로 따로 표시한다.
+    var failed by remember(fid, uid) { mutableStateOf(false) }
+    val usage by remember(fid, uid) { repo.usage(fid, uid).catch { failed = true } }.collectAsState(null)
     var days by remember { mutableIntStateOf(30) }
     val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days) }
 
@@ -63,8 +65,9 @@ internal fun PeriodTab(repo: FamilyRepository, fid: String, uid: String, apps: M
             }
         }
         when {
+            failed -> Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
             summary == null -> Text("…")
-            summary.totalSec == 0L -> Text(stringResource(R.string.period_empty), style = MaterialTheme.typography.bodyLarge)
+            summary.isEmpty -> Text(stringResource(R.string.period_empty), style = MaterialTheme.typography.bodyLarge)
             else -> {
                 // 기간 총합이 이 탭의 핵심 숫자다.
                 Column {

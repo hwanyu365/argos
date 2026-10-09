@@ -34,6 +34,14 @@ class PeriodSummaryTest {
     }
 
     @Test
+    fun `TC#31 하루 총합이 없는 날도 앱별 기록이 있으면 비어 있지 않다`() {
+        val s = PeriodSummary.of(daily, totals = emptyMap(), today = d(10), days = 1)
+        assertEquals(listOf("com.google.android.youtube" to 1_200L), s.apps)
+        assertEquals(false, s.isEmpty)
+        assertEquals(true, PeriodSummary.of(emptyMap(), emptyMap(), d(10), 7).isEmpty)
+    }
+
+    @Test
     fun `TC#31 오늘만 고르면 오늘 기록만 센다`() {
         val s = PeriodSummary.of(daily, totals, today = d(10), days = 1)
         assertEquals(listOf("com.google.android.youtube" to 1_200L), s.apps)
