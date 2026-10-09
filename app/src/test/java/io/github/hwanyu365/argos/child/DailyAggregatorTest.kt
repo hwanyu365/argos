@@ -40,6 +40,25 @@ class DailyAggregatorTest {
     }
 
     @Test
+    fun `TC#55 YouTube 의 Shorts 세션 시간을 날짜별로 따로 센다`() {
+        val yt = "com.google.android.youtube"
+        val days = DailyAggregator.aggregate(
+            listOf(
+                Session(yt, t(10, 9, 0), t(10, 9, 10), title = "Shorts · 고양이"),
+                Session(yt, t(10, 9, 10), t(10, 9, 30), title = "일반 영상"),
+                Session(yt, t(10, 21, 0), t(10, 21, 5), title = "Shorts"),
+                Session("com.android.chrome", t(10, 22, 0), t(10, 22, 5), title = "Shorts 이야기", url = "m.youtube.com/shorts/x"),
+                // 미디어 세션이 준 일반 영상 제목이 우연히 'Shorts' 로 시작하는 경우는 Shorts 가 아니다.
+                Session(yt, t(10, 23, 0), t(10, 23, 10), title = "Shorts 만드는 법")
+            ),
+            kst
+        )
+        val d = days.getValue(day(10))
+        assertEquals(2_700L, d.apps[yt])
+        assertEquals(900L, d.shortsSec)
+    }
+
+    @Test
     fun `TC#26 업로드는 마지막으로 올린 날부터 오늘까지 다시 올린다 (실패분 재전송)`() {
         assertEquals(listOf(day(8), day(9), day(10)), DailyAggregator.uploadDays(lastUploaded = day(8), earliest = day(1), today = day(10)))
     }

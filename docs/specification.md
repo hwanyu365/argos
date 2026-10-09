@@ -105,7 +105,7 @@
 - `FR#13` 일별 앱 사용 합계(daily)와 세션 목록(timeline)을 15분마다, 그리고 날짜가 바뀔 때 업로드한다. 업로드 실패분은 다음 주기에 재시도한다 [요구사항]
   - UC2 는 daily·dailyTotal 까지. timeline 은 상세 정보와 함께 UC3 에서 올린다
 - `FR#14` 로컬과 원격 데이터 모두 90일이 지나면 삭제한다 [요구사항]
-  - 일별 업로드 때 함께 정리한다: 로컬은 90일 전보다 먼저 끝난 세션(매번), 원격은 그보다 앞선 날짜 키(기준일이 바뀔 때)
+  - 일별 업로드 때 함께 정리한다: 로컬은 90일 전보다 먼저 끝난 세션(매번), 원격은 그보다 앞선 날짜 키(`daily`·`dailyTotal`·`dailyShorts`, 기준일이 바뀔 때)
   - Why: 조회 기본값은 30일이지만 비교·조정 여유를 두되, 무료 저장 한도(1GB) 안에 머물도록 상한을 둠
 
 **부모 화면 (UC1~UC4)**
@@ -116,6 +116,7 @@
   - 기간 총합은 하루 총합(`dailyTotal`, A#4)을 더한다. 앱별 합계를 더하면 PiP 겹침이 두 번 들어가기 때문
   - 막대를 누르면 그날 값을 보여준다. 앱별 목록이 값을 모두 글자로 보여주므로 차트의 표 역할을 한다
   - 직접 선택은 후속 작업이다 (GH-32 는 오늘·7일·30일)
+  - YouTube 줄 아래에 기간의 Shorts 시간을 "이 중 Shorts n분" 으로 표시한다 (A#5)
 - `FR#17` 자녀 상세의 "타임라인" 탭은 선택한 날짜의 세션을 시간순으로 앱·시작~종료·title/url 과 함께 표시한다 [요구사항]
 - `FR#18` 감시 상태를 §6.4 규칙으로 분류해 배지와 마지막 확인 시각을 표시한다 [요구사항]
 
@@ -153,6 +154,7 @@ families/{fid}/members/{uid}                     { role: "parent"|"child", name,
 families/{fid}/children/{uid}/live               { pkg?, label?, since?, title?, url?, screenOn, updatedAt, perms: { usage, a11y, notif }, pip?: { pkg, label?, since } }
 families/{fid}/children/{uid}/daily/{yyyy-MM-dd}/{pkgKey}     seconds (number)
 families/{fid}/children/{uid}/dailyTotal/{yyyy-MM-dd}         seconds (number, 겹치는 구간을 한 번만 센 하루 총합)
+families/{fid}/children/{uid}/dailyShorts/{yyyy-MM-dd}        seconds (number, YouTube 앱에서 Shorts 로 본 시간)
 families/{fid}/children/{uid}/timeline/{yyyy-MM-dd}/{sessionId} { pkg, start, end, title?, url? }
 families/{fid}/apps/{pkgKey}                     { label }
 ```
@@ -184,7 +186,7 @@ families/{fid}/apps/{pkgKey}                     { label }
   - Why: 클라이언트는 자기 시계로 10분 뒤를 계산하므로 서버보다 시계가 빠른 기기를 위해 1분 여유를 둔다
   - 이미 있는 코드는 그 코드가 가리키는 가족의 부모만 덮어쓸 수 있다 → 다른 가족이 같은 코드를 가로채지 못함
 - `R#5` `members/{uid}` 삭제 → 본인 또는 같은 가족의 부모
-- `R#7` `children/{uid}/daily/{date}/{pkgKey}`, `dailyTotal/{date}` → 날짜 키 `yyyy-MM-dd`, 앱 키 `[A-Za-z0-9_,]{1,255}`, 값 0~90000 정수(서머타임 전환일 25시간 포함). 날짜 노드는 앱별 값을 가진 객체여야 한다
+- `R#7` `children/{uid}/daily/{date}/{pkgKey}`, `dailyTotal/{date}`, `dailyShorts/{date}` → 날짜 키 `yyyy-MM-dd`, 앱 키 `[A-Za-z0-9_,]{1,255}`, 값 0~90000 정수(서머타임 전환일 25시간 포함). 날짜 노드는 앱별 값을 가진 객체여야 한다
   - 쓰기 주체는 R#3 과 같다 (자녀 본인, 부모는 삭제만)
 - `R#6` `apps/{pkgKey}` 쓰기 → 같은 가족의 자녀 멤버만. `{ label }` 1~100자만 허용
   - 앱 이름은 가족 안에서 공유되는 표시용 값이라 어느 자녀가 써도 된다. 형식과 크기만 제한한다
@@ -257,6 +259,8 @@ flowchart TD
 - `A#3` 업로드는 해당 날짜 전체 값을 덮어쓴다 (증분 아님) → 재시도·중복 업로드에도 값이 일정
   - 매번 마지막으로 성공한 날부터 오늘까지 다시 올린다. 처음에는 가장 오래된 로컬 기록부터, 보관 기간(90일)을 넘지 않게
 - `A#4` 앱별 합계는 앱마다 따로 센다(PiP 겹침 포함). 하루 총합(`dailyTotal`)은 모든 세션 구간의 합집합으로 센다 (S#9 결정)
+- `A#5` YouTube 앱에서 X#1b 가 붙인 Shorts 표시(정확히 "Shorts" 또는 "Shorts · …")가 있는 세션 시간을 하루 `dailyShorts` 로 따로 센다. YouTube 앱별 합계에는 그대로 포함된다 (저장소 소유자 요청, GH-39)
+  - 브라우저에서 본 Shorts 는 주소로만 보이므로 세지 않는다
 
 ### 6.3 상세 정보 추출 [FR#10, FR#11]
 
@@ -375,9 +379,10 @@ stateDiagram-v2
 | TC#49 | FR#19 | 자녀가 런처 앱(YouTube 등) 사용 / 부모 카드 / 패키지명이 아닌 앱 이름 표시 | (통합) |
 | TC#50 | S#9, FR#15 | PiP 진입·일반 전환(3초 안 숨김)·종료 이벤트·다른 화면 숨김·다시 크게 열기·화면 꺼짐·홈 화면 위 PiP·PiP 중 일반 전환·재시작 복원 / 세션 빌드 / PiP 세션 유지·닫기 시각. 카드 / PiP 이름·경과 표시, 끊기면 숨김. 실기기 PiP 상태에서 다른 앱 / 부모 카드에 두 앱 | 통합 일부 |
 | TC#51 | A#4 | 겹치는 두 앱 세션 / 집계 / 앱별은 각각, 하루 총합은 합집합 | |
-| TC#52 | R#7 | 유효 daily·dailyTotal / 쓰기 / 허용. 날짜·앱 키 형식, 음수·90000 초과·비정수·문자열, 날짜 노드에 숫자, 부모 쓰기 / 거부 | rules |
+| TC#52 | R#7 | 유효 daily·dailyTotal·dailyShorts / 쓰기 / 허용. 날짜·앱 키 형식, 음수·90000 초과·비정수·문자열, 날짜 노드에 숫자, 부모 쓰기 / 거부 | rules |
 | TC#53 | S#10 | 멈춤 후 다른 앱 없이 같은 화면 숨김 / 세션 빌드 / 멈춘 시각에 닫음(1초 미만은 버림). 같은 앱 화면 전환 / 유지 | |
 | TC#54 | X#5 | 검색 결과·영상·로그인·경로 토큰 주소 / 정리 / 검색어·v 만 남김, 나머지 쿼리·조각 제거, 경로 토큰 가림. 주소창 / 추출 / 정리된 주소 | |
+| TC#55 | A#5, FR#16 | YouTube Shorts·일반 영상·'Shorts' 로 시작하는 일반 영상 제목·브라우저 Shorts 세션 / 집계 / Shorts 시간만 따로, YouTube 합계는 그대로. 기간 / 요약 / 기간 Shorts 합 | |
 
 ## 부록. 변경 이력
 
@@ -394,3 +399,4 @@ stateDiagram-v2
 | GH-31 | S#10 숨겨진 현재 앱 닫기(Family Link 잠금 화면 3시간 과집계 수정), UC2 일별 집계·업로드: dailyTotal(A#4 합집합), R#7, 업로드 범위(A#3), 보관 정리(FR#14) |
 | GH-32 | UC2 부모 기간 탭(오늘·7일·30일, 총합은 dailyTotal 합, 일별 막대, 앱별 목록). 직접 선택은 후속 |
 | GH-36 | UC3 상세 수집: 미디어 제목·Shorts 제목(X#1b 규칙 실측 보정)·브라우저 주소, X#0 OS 수준 한정, X#4 병합, 선택 권한 안내, 상세 제한 활성 |
+| GH-39 | A#5 YouTube Shorts 시청 시간 (dailyShorts, 기간 탭 '이 중 Shorts') |

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.hwanyu365.argos.R
+import io.github.hwanyu365.argos.child.DetailExtractor
 import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.PkgKey
 import java.time.LocalDate
@@ -54,7 +55,7 @@ internal fun PeriodTab(repo: FamilyRepository, fid: String, uid: String, apps: M
     var failed by remember(fid, uid) { mutableStateOf(false) }
     val usage by remember(fid, uid) { repo.usage(fid, uid).catch { failed = true } }.collectAsState(null)
     var days by remember { mutableIntStateOf(30) }
-    val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days) }
+    val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days, it.shorts) }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -75,7 +76,7 @@ internal fun PeriodTab(repo: FamilyRepository, fid: String, uid: String, apps: M
                     Text(hours(summary.totalSec), style = MaterialTheme.typography.headlineLarge)
                 }
                 if (days > 1) DailyBars(summary.bars)
-                AppList(summary.apps, apps)
+                AppList(summary.apps, apps, summary.shortsSec)
             }
         }
     }
@@ -148,7 +149,7 @@ private fun DrawScope.roundedTopBar(topLeft: Offset, size: Size, radius: Float, 
 
 /** 앱별 합계. 이 목록이 차트의 표 역할도 한다 (값을 글자로 모두 보여준다). */
 @Composable
-private fun AppList(rows: List<Pair<String, Long>>, labels: Map<String, String>) {
+private fun AppList(rows: List<Pair<String, Long>>, labels: Map<String, String>, shortsSec: Long) {
     val max = rows.firstOrNull()?.second?.coerceAtLeast(1) ?: 1
     val bar = MaterialTheme.colorScheme.primary
     val track = MaterialTheme.colorScheme.surfaceVariant
@@ -158,6 +159,10 @@ private fun AppList(rows: List<Pair<String, Long>>, labels: Map<String, String>)
                 Row(Modifier.fillMaxWidth()) {
                     Text(labels[PkgKey.encode(pkg)] ?: pkg, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(hours(sec), style = MaterialTheme.typography.bodyLarge)
+                }
+                // GH-39: YouTube 총 시간 안에서 Shorts 로 본 시간.
+                if (pkg == DetailExtractor.YOUTUBE && shortsSec > 0) {
+                    Text(stringResource(R.string.shorts_within, hours(shortsSec)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(track)) {
                     Box(Modifier.fillMaxWidth(sec.toFloat() / max).height(6.dp).clip(RoundedCornerShape(3.dp)).background(bar))

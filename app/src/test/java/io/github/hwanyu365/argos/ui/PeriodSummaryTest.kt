@@ -42,6 +42,12 @@ class PeriodSummaryTest {
     }
 
     @Test
+    fun `TC#55 기간의 Shorts 시간을 더한다`() {
+        val s = PeriodSummary.of(daily, totals, today = d(10), days = 7, shorts = mapOf(d(9) to 1_000L, d(10) to 200L, d(1) to 999L))
+        assertEquals(1_200L, s.shortsSec)
+    }
+
+    @Test
     fun `TC#31 오늘만 고르면 오늘 기록만 센다`() {
         val s = PeriodSummary.of(daily, totals, today = d(10), days = 1)
         assertEquals(listOf("com.google.android.youtube" to 1_200L), s.apps)

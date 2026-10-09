@@ -156,6 +156,7 @@ class MonitorService : Service() {
             // R#7 상한을 넘는 값 하나 때문에 업로드 전체가 거부되지 않도록 미리 자른다.
             update["children/$uid/daily/$d"] = day?.apps?.mapKeys { PkgKey.encode(it.key) }?.mapValues { it.value.coerceAtMost(MAX_DAY_SEC) }?.takeIf { it.isNotEmpty() }
             update["children/$uid/dailyTotal/$d"] = day?.totalSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
+            update["children/$uid/dailyShorts/$d"] = day?.shortsSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
         }
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 집계에 나온 앱의 이름을 공유한다 (R#6).
         val newLabels = agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }
@@ -174,7 +175,7 @@ class MonitorService : Service() {
 
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
     private fun pruneRemote(child: DatabaseReference, cutoff: LocalDate) {
-        listOf("daily", "dailyTotal").forEach { node ->
+        listOf("daily", "dailyTotal", "dailyShorts").forEach { node ->
             child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap ->
                 val old = snap.children.mapNotNull { it.key }.associate { "$node/$it" to null }
                 // 성공했을 때만 기준일을 기록해, 실패하면 다음 업로드 때 다시 정리한다.

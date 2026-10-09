@@ -258,6 +258,7 @@ describe("TC#52 일별 사용 시간 형식 검증", () => {
     await seed(withKids());
     await assertSucceeds(base().child("daily/2026-10-10").set({ "com,google,android,youtube": 3600, "com,kakao,talk": 600 }));
     await assertSucceeds(base().child("dailyTotal/2026-10-10").set(3900));
+    await assertSucceeds(base().child("dailyShorts/2026-10-10").set(1200));
   });
 
   test("날짜 키가 yyyy-MM-dd 가 아니면 거부한다", async () => {
@@ -280,6 +281,11 @@ describe("TC#52 일별 사용 시간 형식 검증", () => {
     await assertSucceeds(base().child("daily/2026-10-10").set({ a: 90000 }));
     await assertFails(base().child("daily/2026-10-10").set({ a: "1" }));
     await assertFails(base().child("dailyTotal/2026-10-10").set(90001));
+    await assertFails(base().child("dailyShorts/2026-10-10").set(90001));
+    await assertFails(base().child("dailyShorts/2026-1-1").set(1));
+    await assertFails(base().child("dailyShorts/2026-10-10").set(1.5));
+    await assertFails(base().child("dailyShorts/2026-10-10").set(-1));
+    await assertFails(base().child("dailyShorts/2026-10-10").set("1"));
     await assertFails(base().child("dailyTotal/2026-10-10").set(1.5));
   });
 

@@ -107,14 +107,15 @@ class FamilyRepository {
         )
     }
 
-    data class Usage(val daily: Map<java.time.LocalDate, Map<String, Long>>, val totals: Map<java.time.LocalDate, Long>)
+    data class Usage(val daily: Map<java.time.LocalDate, Map<String, Long>>, val totals: Map<java.time.LocalDate, Long>, val shorts: Map<java.time.LocalDate, Long> = emptyMap())
 
     /** FR#16: 자녀의 일별 앱 사용 초와 하루 총합. 형식이 맞지 않는 날짜 키는 건너뛴다. */
     fun usage(fid: String, uid: String): Flow<Usage> = db.getReference("families/$fid/children/$uid").values { s ->
         fun date(k: String?) = k?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
         Usage(
             daily = s.child("daily").children.mapNotNull { d -> date(d.key)?.let { it to d.children.associate { a -> a.key!! to (a.getValue(Long::class.java) ?: 0L) } } }.toMap(),
-            totals = s.child("dailyTotal").children.mapNotNull { d -> date(d.key)?.let { it to (d.getValue(Long::class.java) ?: 0L) } }.toMap()
+            totals = s.child("dailyTotal").children.mapNotNull { d -> date(d.key)?.let { it to (d.getValue(Long::class.java) ?: 0L) } }.toMap(),
+            shorts = s.child("dailyShorts").children.mapNotNull { d -> date(d.key)?.let { it to (d.getValue(Long::class.java) ?: 0L) } }.toMap()
         )
     }
 

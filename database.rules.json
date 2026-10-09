@@ -62,6 +62,9 @@
             "dailyTotal": {
               "$date": { ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 90000 && newData.val() % 1 === 0" }
             },
+            "dailyShorts": {
+              "$date": { ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 90000 && newData.val() % 1 === 0" }
+            },
             "$other": { ".validate": false }
           }
         },
