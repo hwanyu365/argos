@@ -36,6 +36,13 @@
               "title": { ".validate": "newData.isString() && newData.val().length <= 300" },
               "url": { ".validate": "newData.isString() && newData.val().length <= 2048" },
               "screenOn": { ".validate": "newData.isBoolean()" },
+              "pip": {
+                ".validate": "newData.hasChildren(['pkg', 'since'])",
+                "pkg": { ".validate": "newData.isString() && newData.val().length <= 255" },
+                "label": { ".validate": "newData.isString() && newData.val().length <= 100" },
+                "since": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              },
               "updatedAt": { ".validate": "newData.val() === now" },
               "perms": {
                 ".validate": "newData.hasChildren(['usage', 'a11y', 'notif'])",

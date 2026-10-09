@@ -154,6 +154,12 @@ private fun LiveLines(card: ChildCard) {
             (card.title ?: card.url)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }
         }
     }
+    // S#9: PiP 로 함께 보이는 앱. 현재 앱이 없을 때(홈 화면 위 PiP)도 보여준다.
+    if (card.liveness == Liveness.OK) {
+        card.pipLabel?.let { label ->
+            Text(stringResource(R.string.pip_line, label, durationText(card.pipElapsedMs ?: 0)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+        }
+    }
     card.sinceUpdateMs?.let { Text(stringResource(R.string.updated_ago, durationText(it)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 

@@ -33,7 +33,9 @@ data class ChildCard(
     val title: String?,
     val url: String?,
     val screenOn: Boolean,
-    val liveness: Liveness?
+    val liveness: Liveness?,
+    val pipLabel: String? = null,
+    val pipElapsedMs: Long? = null
 ) {
     companion object {
         fun serverNow(localNow: Long, offsetMs: Long) = localNow + offsetMs
@@ -52,7 +54,10 @@ data class ChildCard(
                 title = live?.title?.takeIf { liveness == Liveness.OK },
                 url = live?.url?.takeIf { liveness == Liveness.OK },
                 screenOn = live?.screenOn ?: false,
-                liveness = liveness
+                liveness = liveness,
+                // PiP 도 '지금' 상태라서 기록이 끊겼으면 보여주지 않는다 (FR#18).
+                pipLabel = live?.pip?.takeIf { liveness == Liveness.OK }?.let { it.label ?: apps[PkgKey.encode(it.pkg)] ?: it.pkg },
+                pipElapsedMs = live?.pip?.takeIf { liveness == Liveness.OK }?.let { (serverNow - it.since).coerceAtLeast(0) }
             )
         }
     }

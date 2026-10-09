@@ -9,6 +9,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import io.github.hwanyu365.argos.child.Live
+import io.github.hwanyu365.argos.child.LivePip
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.channels.awaitClose
@@ -88,7 +89,11 @@ class FamilyRepository {
                             since = l.child("since").getValue(Long::class.java),
                             title = l.child("title").getValue(String::class.java),
                             url = l.child("url").getValue(String::class.java),
-                            screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false
+                            screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false,
+                            pip = l.child("pip/pkg").getValue(String::class.java)?.let { pkg ->
+                                // since 가 없으면 경과 시간을 계산할 수 없으므로 PiP 를 보여주지 않는다.
+                                l.child("pip/since").getValue(Long::class.java)?.let { LivePip(pkg, l.child("pip/label").getValue(String::class.java), it) }
+                            }
                         )
                     } else {
                         null

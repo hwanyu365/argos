@@ -43,8 +43,12 @@ data class Live(
     val since: Long? = null,
     val title: String? = null,
     val url: String? = null,
-    val screenOn: Boolean
+    val screenOn: Boolean,
+    val pip: LivePip? = null
 )
+
+/** S#9: 현재 앱과 함께 보이는 PiP 앱. */
+data class LivePip(val pkg: String, val label: String?, val since: Long)
 
 object LiveReporter {
     /** FR#12: 바뀌면 즉시, 아니면 heartbeat 주기마다. */
