@@ -81,4 +81,5 @@
     <string name="perm_notif">알림 접근 (영상 제목)</string>
     <string name="perm_notif_desc">재생 중인 영상의 제목을 확인해요. 알림 내용은 읽지 않아요</string>
     <string name="a11y_description">Chrome·삼성 인터넷의 주소창과 YouTube Shorts 제목만 읽어 보호자에게 보여줍니다. 다른 앱의 화면은 읽지 않습니다.</string>
+    <string name="shorts_within">이 중 Shorts %1$s</string>
 </resources>

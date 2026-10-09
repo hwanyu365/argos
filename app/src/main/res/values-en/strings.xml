@@ -80,4 +80,5 @@
     <string name="perm_notif">Notification access (video title)</string>
     <string name="perm_notif_desc">Reads the title of the playing video. Notification contents are not read</string>
     <string name="a11y_description">Reads only the address bar of Chrome and Samsung Internet and YouTube Shorts titles to show a guardian. No other app screens are read.</string>
+    <string name="shorts_within">Shorts: %1$s of this</string>
 </resources>

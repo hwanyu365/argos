@@ -14,14 +14,14 @@ data class MediaInfo(val pkg: String, val playing: Boolean, val title: String?)
 
 /** spec §6.3. 읽는 범위는 X#0 으로 한정한다: 지원 브라우저 주소창, YouTube Shorts 제목. */
 object DetailExtractor {
-    private const val YOUTUBE = "com.google.android.youtube"
+    const val YOUTUBE = "com.google.android.youtube"
 
     // X#2: 실기기에서 확인한 브라우저만 (GH-1). 다른 브라우저는 확인 후 추가한다.
     private val URL_BARS = mapOf(
         "com.android.chrome" to "com.android.chrome:id/url_bar",
         "com.sec.android.app.sbrowser" to "com.sec.android.app.sbrowser:id/location_bar_edit_text"
     )
-    private const val SHORTS = "Shorts"
+    const val SHORTS = "Shorts"
     private const val SHORTS_FOOTER = "$YOUTUBE:id/reel_player_footer_container"
 
     /** 접근성 서비스 설정의 대상 앱. OS 가 이 앱들의 화면만 전달하므로 X#0 이 코드가 아니라 설정으로도 보장된다. */
