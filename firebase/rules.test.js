@@ -273,12 +273,13 @@ describe("TC#52 일별 사용 시간 형식 검증", () => {
     await assertFails(base().child("daily/2026-10-10").set({ ["x".repeat(256)]: 1 }));
   });
 
-  test("값은 0~86400 초의 정수만 허용한다", async () => {
+  test("값은 0~90000 초의 정수만 허용한다 (서머타임 25시간 날 포함)", async () => {
     await seed(withKids());
     await assertFails(base().child("daily/2026-10-10").set({ a: -1 }));
-    await assertFails(base().child("daily/2026-10-10").set({ a: 86401 }));
+    await assertFails(base().child("daily/2026-10-10").set({ a: 90001 }));
+    await assertSucceeds(base().child("daily/2026-10-10").set({ a: 90000 }));
     await assertFails(base().child("daily/2026-10-10").set({ a: "1" }));
-    await assertFails(base().child("dailyTotal/2026-10-10").set(86401));
+    await assertFails(base().child("dailyTotal/2026-10-10").set(90001));
     await assertFails(base().child("dailyTotal/2026-10-10").set(1.5));
   });
 

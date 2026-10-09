@@ -49,9 +49,10 @@ class MonitorService : Service() {
     private var lastSentAt = 0L
 
     // 감시 스레드와 Firebase 콜백(메인 스레드)이 함께 쓴다.
+    private val labeledApps = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private var lastDailyAt = 0L
     private var lastDailyDate: LocalDate? = null
-    private val labeledApps = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private var lastPruneCutoff: LocalDate? = null
 
     // 화면이 꺼지면 tick 이 60초 간격이 되므로, 켜지는 즉시 3초 폴링으로 되돌린다 (NFR#2).
     private val screenOnReceiver = object : BroadcastReceiver() {
@@ -130,7 +131,7 @@ class MonitorService : Service() {
 
     /**
      * FR#13: 마지막으로 올린 날부터 오늘까지 일별 합계를 다시 계산해 덮어쓴다 (A#3).
-     * 진행 중 세션과 PiP 는 지금 시각까지 더한다 (A#2). 하루 한 번 보관 기간이 지난 기록을 지운다 (FR#14).
+     * 진행 중 세션과 PiP 는 지금 시각까지 더한다 (A#2). 보관 기간이 지난 기록을 지운다: 로컬은 매번, 원격은 기준일이 바뀔 때 (FR#14).
      */
     private fun uploadDaily(today: LocalDate, now: Long) {
         val zone = ZoneId.systemDefault()
@@ -152,14 +153,21 @@ class MonitorService : Service() {
             update["children/$uid/dailyTotal/$d"] = day?.totalSec?.takeIf { it > 0 }
         }
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 집계에 나온 앱의 이름을 공유한다 (R#6).
-        agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }.forEach { pkg ->
-            update["apps/${PkgKey.encode(pkg)}"] = mapOf("label" to device.label(pkg).take(100))
-        }
+        val newLabels = agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }
+        newLabels.forEach { pkg -> update["apps/${PkgKey.encode(pkg)}"] = mapOf("label" to device.label(pkg).take(100)) }
         val family = FirebaseDatabase.getInstance().getReference("families/$fid")
         family.updateChildren(update)
             .addOnSuccessListener { prefs.dailyUploaded = today }
-            .addOnFailureListener { Log.w(TAG, "daily upload failed", it) }
-        pruneRemote(family.child("children/$uid"), cutoff)
+            .addOnFailureListener {
+                // 실패하면 다음 재전송 때 앱 이름도 다시 올라가도록 공유 표시를 되돌린다.
+                labeledApps.removeAll(newLabels.toSet())
+                Log.w(TAG, "daily upload failed", it)
+            }
+        // 기준일은 하루에 한 번 바뀌므로 그때만 원격을 조회해 정리한다 (다운로드 한도 절약).
+        if (cutoff != lastPruneCutoff) {
+            lastPruneCutoff = cutoff
+            pruneRemote(family.child("children/$uid"), cutoff)
+        }
     }
 
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
