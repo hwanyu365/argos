@@ -4,7 +4,7 @@
     <string name="firebase_missing_body">이 앱은 각자의 Firebase 프로젝트로 동작합니다.\nREADME 의 셋업 가이드에 따라 local.properties 에 ARGOS_FIREBASE_* 값을 넣고 다시 빌드하세요.</string>
     <string name="monitor_channel">Argos 상태</string>
     <string name="monitor_title">Argos 보호 중</string>
-    <string name="monitor_text">가족과 함께 이 기기를 안전하게 지키고 있어요</string>
+    <string name="monitor_text">이 기기를 안전하게 지키고 있어요</string>
     <string name="welcome_title">자녀의 앱 사용을 한눈에</string>
     <string name="welcome_body">보호자 기기에서 가족을 만들고, 자녀 기기는 초대 코드로 참여합니다.</string>
     <string name="create_family">새 가족 만들기</string>
@@ -45,9 +45,9 @@
     <string name="perm_usage">사용 정보 접근</string>
     <string name="perm_usage_desc">지금 어떤 앱을 쓰는지 확인합니다</string>
     <string name="perm_post">알림 표시</string>
-    <string name="perm_post_desc">감시 중임을 알리는 알림을 표시합니다</string>
+    <string name="perm_post_desc">보호 중임을 알리는 알림을 표시해요</string>
     <string name="perm_battery">배터리 최적화 제외</string>
-    <string name="perm_battery_desc">백그라운드에서 감시가 멈추지 않게 합니다</string>
+    <string name="perm_battery_desc">백그라운드에서도 보호가 멈추지 않게 해요</string>
     <string name="granted">허용됨</string>
     <string name="allow">허용하기</string>
     <string name="start_monitoring">보호 시작</string>

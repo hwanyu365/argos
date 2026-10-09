@@ -3,7 +3,7 @@
     <string name="firebase_missing_body">This app runs on your own Firebase project.\nFollow the setup guide in README, put ARGOS_FIREBASE_* values into local.properties and rebuild.</string>
     <string name="monitor_channel">Argos status</string>
     <string name="monitor_title">Argos is protecting this device</string>
-    <string name="monitor_text">Keeping this device safe together with your family</string>
+    <string name="monitor_text">Keeping this device safe</string>
     <string name="welcome_title">Your child\'s app use at a glance</string>
     <string name="welcome_body">Create a family on a guardian\'s device, then join from your child\'s device with an invite code.</string>
     <string name="create_family">Create a family</string>
@@ -44,9 +44,9 @@
     <string name="perm_usage">Usage access</string>
     <string name="perm_usage_desc">Shows which app is in use</string>
     <string name="perm_post">Notifications</string>
-    <string name="perm_post_desc">Shows a notification that monitoring is on</string>
+    <string name="perm_post_desc">Shows a notification while protection is on</string>
     <string name="perm_battery">Ignore battery optimization</string>
-    <string name="perm_battery_desc">Keeps monitoring running in the background</string>
+    <string name="perm_battery_desc">Keeps protection running in the background</string>
     <string name="granted">Allowed</string>
     <string name="allow">Allow</string>
     <string name="start_monitoring">Start protection</string>

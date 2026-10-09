@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -223,7 +224,10 @@ private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> U
                             onClick = { role = r },
                             shape = SegmentedButtonDefaults.itemShape(i, 2),
                             icon = {}
-                        ) { Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        ) {
+                            // 체크 아이콘이 없으므로 색에만 기대지 않게 선택된 쪽을 굵게도 표시한다 (NFR#9).
+                            Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (role == r) FontWeight.Bold else FontWeight.Normal)
+                        }
                     }
                 }
                 val c = shown?.first
