@@ -1,9 +1,12 @@
-import { after, before, test } from "node:test";
+import { after, afterEach, before, describe, test } from "node:test";
 import { readFileSync } from "node:fs";
-import { assertFails, initializeTestEnvironment } from "@firebase/rules-unit-testing";
+import { assertFails, assertSucceeds, initializeTestEnvironment } from "@firebase/rules-unit-testing";
 
 // 스펙 §4.3 보안 규칙 계약 검증. TC 번호는 docs/specification.md §7 과 대응한다.
 let env;
+const FID = "familyA";
+const CODE = "ABCDEFGH23";
+const MIN = 60_000;
 
 before(async () => {
   env = await initializeTestEnvironment({
@@ -12,10 +15,151 @@ before(async () => {
   });
 });
 
+afterEach(() => env.clearDatabase());
 after(() => env.cleanup());
 
-test("TC#8 다른 가족의 데이터는 읽거나 쓸 수 없다", async () => {
-  const db = env.authenticatedContext("parentA").database();
-  await assertFails(db.ref("families/familyB").get());
-  await assertFails(db.ref("families/familyB/children/x/live").set({ pkg: "a" }));
+const db = (uid) => env.authenticatedContext(uid).database();
+const member = (role, extra = {}) => ({ role, name: role === "parent" ? "엄마" : "첫째", joinedAt: { ".sv": "timestamp" }, ...extra });
+
+// 규칙을 거치지 않고 초기 상태를 만든다.
+async function seed(data) {
+  await env.withSecurityRulesDisabled((ctx) => ctx.database().ref().set(data));
+}
+
+const parentFamily = (extra = {}) => ({
+  families: { [FID]: { members: { parent1: { role: "parent", name: "엄마", joinedAt: 1 } }, ...extra } },
+});
+
+describe("TC#4 가족 생성", () => {
+  test("빈 가족에 첫 부모로 자신을 등록할 수 있다", async () => {
+    await assertSucceeds(db("parent1").ref(`families/${FID}/members/parent1`).set(member("parent")));
+  });
+
+  test("빈 가족이라도 자녀로 첫 등록은 할 수 없다", async () => {
+    await assertFails(db("kid1").ref(`families/${FID}/members/kid1`).set(member("child")));
+  });
+
+  test("이미 멤버가 있는 가족에는 코드 없이 부모로 들어갈 수 없다", async () => {
+    await seed(parentFamily());
+    await assertFails(db("intruder").ref(`families/${FID}/members/intruder`).set(member("parent")));
+  });
+
+  test("다른 사람의 uid 로 멤버를 만들 수 없다", async () => {
+    await assertFails(db("parent1").ref(`families/${FID}/members/someone`).set(member("parent")));
+  });
+});
+
+describe("TC#6 초대 코드로 참여", () => {
+  test("유효한 코드면 자녀로 참여할 수 있다", async () => {
+    await seed({ ...parentFamily(), pairing: { [CODE]: { familyId: FID, expiresAt: Date.now() + 5 * MIN } } });
+    await assertSucceeds(db("kid1").ref(`families/${FID}/members/kid1`).set(member("child", { code: CODE })));
+  });
+
+  test("유효한 코드면 두 번째 부모로 참여할 수 있다 (US#7)", async () => {
+    await seed({ ...parentFamily(), pairing: { [CODE]: { familyId: FID, expiresAt: Date.now() + 5 * MIN } } });
+    await assertSucceeds(db("parent2").ref(`families/${FID}/members/parent2`).set(member("parent", { code: CODE })));
+  });
+
+  test("만료된 코드로는 참여할 수 없다", async () => {
+    await seed({ ...parentFamily(), pairing: { [CODE]: { familyId: FID, expiresAt: Date.now() - 1 } } });
+    await assertFails(db("kid1").ref(`families/${FID}/members/kid1`).set(member("child", { code: CODE })));
+  });
+
+  test("다른 가족의 코드로는 참여할 수 없다", async () => {
+    await seed({ ...parentFamily(), pairing: { [CODE]: { familyId: "familyB", expiresAt: Date.now() + 5 * MIN } } });
+    await assertFails(db("kid1").ref(`families/${FID}/members/kid1`).set(member("child", { code: CODE })));
+  });
+});
+
+describe("TC#7 초대 코드 발급·조회", () => {
+  test("부모 멤버는 10분 이내 만료 코드를 발급할 수 있다", async () => {
+    await seed(parentFamily());
+    await assertSucceeds(db("parent1").ref(`pairing/${CODE}`).set({ familyId: FID, expiresAt: Date.now() + 10 * MIN - 1000 }));
+  });
+
+  test("만료가 10분을 넘는 코드는 발급할 수 없다", async () => {
+    await seed(parentFamily());
+    await assertFails(db("parent1").ref(`pairing/${CODE}`).set({ familyId: FID, expiresAt: Date.now() + 11 * MIN }));
+  });
+
+  test("형식이 아닌 코드(Crockford Base32 10자리 아님)는 발급할 수 없다", async () => {
+    await seed(parentFamily());
+    await assertFails(db("parent1").ref("pairing/abcdefgh23").set({ familyId: FID, expiresAt: Date.now() + MIN }));
+    await assertFails(db("parent1").ref("pairing/ABCDEFGHIL").set({ familyId: FID, expiresAt: Date.now() + MIN }));
+  });
+
+  test("부모가 아닌 사용자는 코드를 발급할 수 없다", async () => {
+    await seed(parentFamily({ members: { parent1: { role: "parent", name: "엄마", joinedAt: 1 }, kid1: { role: "child", name: "첫째", joinedAt: 1 } } }));
+    await assertFails(db("kid1").ref(`pairing/${CODE}`).set({ familyId: FID, expiresAt: Date.now() + MIN }));
+    await assertFails(db("stranger").ref(`pairing/${CODE}`).set({ familyId: FID, expiresAt: Date.now() + MIN }));
+  });
+
+  test("코드를 아는 인증 사용자는 그 코드만 읽을 수 있고 목록은 읽을 수 없다", async () => {
+    await seed({ ...parentFamily(), pairing: { [CODE]: { familyId: FID, expiresAt: Date.now() + MIN } } });
+    await assertSucceeds(db("kid1").ref(`pairing/${CODE}`).get());
+    await assertFails(db("kid1").ref("pairing").get());
+    await assertFails(env.unauthenticatedContext().database().ref(`pairing/${CODE}`).get());
+  });
+});
+
+describe("TC#8 가족 간 격리", () => {
+  test("다른 가족의 데이터는 읽거나 쓸 수 없다", async () => {
+    await seed(parentFamily());
+    const other = db("parentB");
+    await assertFails(other.ref(`families/${FID}`).get());
+    await assertFails(other.ref(`families/${FID}/children/x/live`).set({ pkg: "a" }));
+  });
+
+  test("멤버는 자기 가족 데이터를 읽을 수 있다", async () => {
+    await seed(parentFamily());
+    await assertSucceeds(db("parent1").ref(`families/${FID}`).get());
+  });
+});
+
+const withKids = () =>
+  parentFamily({
+    members: {
+      parent1: { role: "parent", name: "엄마", joinedAt: 1 },
+      kidX: { role: "child", name: "첫째", joinedAt: 1 },
+      kidY: { role: "child", name: "둘째", joinedAt: 1 },
+    },
+    children: { kidX: { live: { pkg: "a" } }, kidY: { live: { pkg: "b" } } },
+  });
+
+describe("TC#9 자녀 노드 쓰기 권한", () => {
+  test("자녀는 자기 노드에 쓸 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("kidX").ref(`families/${FID}/children/kidX/live`).set({ pkg: "com.google.android.youtube" }));
+  });
+
+  test("자녀는 다른 자녀 노드에 쓸 수 없다", async () => {
+    await seed(withKids());
+    await assertFails(db("kidX").ref(`families/${FID}/children/kidY/live`).set({ pkg: "x" }));
+  });
+
+  test("부모는 자녀 노드에 값을 쓸 수 없고 삭제만 할 수 있다", async () => {
+    await seed(withKids());
+    await assertFails(db("parent1").ref(`families/${FID}/children/kidX/live`).set({ pkg: "x" }));
+    await assertSucceeds(db("parent1").ref(`families/${FID}/children/kidX`).remove());
+  });
+});
+
+describe("TC#10 기기 제거", () => {
+  test("부모가 자녀를 제거하면 이후 그 자녀는 쓰기·읽기가 거부된다", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("parent1").ref(`families/${FID}`).update({ "members/kidX": null, "children/kidX": null }));
+    await assertFails(db("kidX").ref(`families/${FID}/children/kidX/live`).set({ pkg: "a" }));
+    await assertFails(db("kidX").ref(`families/${FID}`).get());
+  });
+
+  test("멤버는 스스로 탈퇴할 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("kidY").ref(`families/${FID}/members/kidY`).remove());
+  });
+
+  test("자녀는 다른 멤버를 제거할 수 없다", async () => {
+    await seed(withKids());
+    await assertFails(db("kidX").ref(`families/${FID}/members/parent1`).remove());
+    await assertFails(db("kidX").ref(`families/${FID}/members/kidY`).remove());
+  });
 });

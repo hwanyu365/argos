@@ -129,7 +129,7 @@
 
 ```
 pairing/{code}                                   { familyId, expiresAt }
-families/{fid}/members/{uid}                     { role: "parent"|"child", name, joinedAt }
+families/{fid}/members/{uid}                     { role: "parent"|"child", name, joinedAt, code? }
 families/{fid}/children/{uid}/live               { pkg?, label?, since?, title?, url?, screenOn, updatedAt, perms: { usage, a11y, notif } }
 families/{fid}/children/{uid}/daily/{yyyy-MM-dd}/{pkgKey}     seconds (number)
 families/{fid}/children/{uid}/timeline/{yyyy-MM-dd}/{sessionId} { pkg, start, end, title?, url? }
@@ -146,8 +146,13 @@ families/{fid}/apps/{pkgKey}                     { label }
 
 - `R#1` `families/{fid}` 이하 읽기 → `members/{auth.uid}` 가 존재할 때만
 - `R#2` `members/{uid}` 생성 → `auth.uid == uid` 이고, 쓰는 데이터의 `code` 가 `pairing/{code}.familyId == fid` 이며 만료 전일 때. 또는 가족이 비어 있을 때 첫 부모로 생성
+  - 규칙이 코드를 검증하려면 쓰는 데이터 안에 코드가 있어야 하므로 `code` 를 멤버 레코드에 남긴다. 10분 뒤 무효가 되므로 남아도 재사용할 수 없다
+  - 멤버 레코드는 생성·삭제만 가능하고 수정은 거부한다 (역할 승격 방지)
+  - `joinedAt` 은 서버 시각만 허용, `name` 1~40자
 - `R#3` `children/{uid}` 쓰기 → `auth.uid == uid` (자녀 본인) 또는 부모 멤버의 삭제(null)
 - `R#4` `pairing/{code}` 생성 → 해당 가족의 부모 멤버만. 읽기 → 인증된 사용자가 코드를 정확히 알 때만 (목록 조회 금지)
+  - 키는 D#4 형식만, `expiresAt` 은 `now < expiresAt ≤ now + 10분`
+  - 이미 있는 코드는 그 코드가 가리키는 가족의 부모만 덮어쓸 수 있다 → 다른 가족이 같은 코드를 가로채지 못함
 - `R#5` `members/{uid}` 삭제 → 본인 또는 같은 가족의 부모
 
 ### 4.4 빌드 설정 계약
@@ -309,3 +314,4 @@ stateDiagram-v2
 | --- | --- |
 | - | 초안 작성 |
 | GH-1 | [확인필요] 4건 실측 반영: 이벤트 지연, Shorts 제목(X#1b), 브라우저 매핑(X#2), Doze heartbeat. 접근성 읽기 범위(X#0), TC#42~44 |
+| GH-16 | 보안 규칙 구현: 멤버 `code` 필드, 멤버 수정 금지, 코드 형식·만료·덮어쓰기 제한 |
