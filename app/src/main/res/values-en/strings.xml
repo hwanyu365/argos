@@ -63,4 +63,13 @@
     <string name="liveness_stopped">Stopped</string>
     <string name="last_seen">Last seen: %1$s</string>
     <string name="pip_line">PiP: %1$s for %2$s</string>
+    <string name="tab_live">Live</string>
+    <string name="tab_period">Period</string>
+    <string name="period_today">Today</string>
+    <string name="period_7">7 days</string>
+    <string name="period_30">30 days</string>
+    <string name="period_total">Total screen time</string>
+    <string name="period_empty">No records in this period</string>
+    <string name="chart_hint">Tap a bar to see that day</string>
+    <string name="chart_desc">Daily usage bar chart, %1$d bars, highest day %2$s</string>
 </resources>

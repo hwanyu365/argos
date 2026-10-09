@@ -53,6 +53,12 @@
 2. 부모 기기: 역할 "부모" → 가족 만들기 → 초대 코드/QR 표시
 3. 자녀 기기: 역할 "자녀" → QR 스캔 또는 코드 입력 → 권한 체크리스트를 순서대로 허용
    - Android 13 이상은 접근성·알림 접근을 켜기 전에 **설정 > 앱 > Argos > ⋮ > 제한된 설정 허용**이 필요합니다
+   - Family Link 로 관리되는 자녀 기기는 앱 설치나 "사용 정보 접근" 허용이 막힐 수 있습니다. 그때는 PC 에 USB 로 연결하고 adb 로 설치·허용합니다
+
+     ```sh
+     adb install argos.apk
+     adb shell appops set io.github.hwanyu365.argos GET_USAGE_STATS allow
+     ```
 
 ## 개발
 

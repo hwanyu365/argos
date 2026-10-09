@@ -64,4 +64,13 @@
     <string name="liveness_stopped">감시 중단</string>
     <string name="last_seen">마지막: %1$s</string>
     <string name="pip_line">PiP: %1$s %2$s째</string>
+    <string name="tab_live">실시간</string>
+    <string name="tab_period">기간</string>
+    <string name="period_today">오늘</string>
+    <string name="period_7">7일</string>
+    <string name="period_30">30일</string>
+    <string name="period_total">총 사용 시간</string>
+    <string name="period_empty">이 기간에는 기록이 없어요</string>
+    <string name="chart_hint">막대를 누르면 그날 사용 시간이 보여요</string>
+    <string name="chart_desc">일별 사용 시간 막대 %1$d개, 가장 많은 날 %2$s</string>
 </resources>
