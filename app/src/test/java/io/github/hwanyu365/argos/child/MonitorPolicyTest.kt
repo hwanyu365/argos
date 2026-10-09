@@ -30,6 +30,14 @@ class MonitorPolicyTest {
         assertEquals(order.sortedDescending(), order)
     }
 
+    @Test
+    fun `TC#11 설정의 활성 컴포넌트 목록은 패키지명이 정확히 같을 때만 허용으로 본다`() {
+        val setting = "io.github.hwanyu365.argos.debug/io.github.hwanyu365.argos.child.UrlService:com.other/.Svc"
+        assertFalse(Permissions.enabledIn(setting, "io.github.hwanyu365.argos"))
+        assertTrue(Permissions.enabledIn(setting, "io.github.hwanyu365.argos.debug"))
+        assertFalse(Permissions.enabledIn(null, "io.github.hwanyu365.argos"))
+    }
+
     private val live = Live(pkg = "A", since = 0, screenOn = true)
 
     @Test

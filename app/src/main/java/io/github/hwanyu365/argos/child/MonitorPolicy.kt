@@ -26,6 +26,14 @@ data class Permissions(
 
     val missing get() = Permission.entries.filterNot(::granted)
     val canStart get() = missing.none { it.required }
+
+    companion object {
+        /**
+         * Settings.Secure 의 활성 서비스 목록(`pkg/class:pkg/class`)에 이 패키지가 있는지.
+         * 부분 문자열로 비교하면 debug(`….debug`) 와 release 가 같이 설치됐을 때 서로의 권한을 자기 것으로 오인한다.
+         */
+        fun enabledIn(setting: String?, pkg: String): Boolean = setting.orEmpty().split(':').any { it.substringBefore('/') == pkg }
+    }
 }
 
 /** spec §4.2 live 노드. updatedAt 은 업로드 시 서버 시각으로 채운다 (D#2). */

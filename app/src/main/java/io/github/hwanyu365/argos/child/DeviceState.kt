@@ -57,12 +57,12 @@ class DeviceState(private val context: Context) {
         val usage = mode == AppOpsManager.MODE_ALLOWED
         val post = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         val battery = context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
-        val a11y = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty().contains(context.packageName)
+        val a11y = Permissions.enabledIn(Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES), context.packageName)
         // MediaListenerService 는 UC3 에서 추가된다. API 26 은 확인 API 가 없어 설정 문자열로 본다.
         val listener = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(ComponentName(context, "${context.packageName}.child.MediaListenerService"))
         } else {
-            Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners").orEmpty().contains(context.packageName)
+            Permissions.enabledIn(Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners"), context.packageName)
         }
         return Permissions(usage, post, battery, a11y, listener)
     }
