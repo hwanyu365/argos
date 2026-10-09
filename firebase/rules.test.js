@@ -19,6 +19,7 @@ afterEach(() => env.clearDatabase());
 after(() => env.cleanup());
 
 const db = (uid) => env.authenticatedContext(uid).database();
+const live = (extra = {}) => ({ pkg: "com.google.android.youtube", label: "YouTube", since: 1, screenOn: true, updatedAt: { ".sv": "timestamp" }, perms: { usage: true, a11y: false, notif: false }, ...extra });
 const member = (role, extra = {}) => ({ role, name: role === "parent" ? "엄마" : "첫째", joinedAt: { ".sv": "timestamp" }, ...extra });
 
 // 규칙을 거치지 않고 초기 상태를 만든다.
@@ -180,18 +181,51 @@ const withKids = () =>
 describe("TC#9 자녀 노드 쓰기 권한", () => {
   test("자녀는 자기 노드에 쓸 수 있다", async () => {
     await seed(withKids());
-    await assertSucceeds(db("kidX").ref(`families/${FID}/children/kidX/live`).set({ pkg: "com.google.android.youtube" }));
+    await assertSucceeds(db("kidX").ref(`families/${FID}/children/kidX/live`).set(live()));
   });
 
   test("자녀는 다른 자녀 노드에 쓸 수 없다", async () => {
     await seed(withKids());
-    await assertFails(db("kidX").ref(`families/${FID}/children/kidY/live`).set({ pkg: "x" }));
+    await assertFails(db("kidX").ref(`families/${FID}/children/kidY/live`).set(live()));
   });
 
   test("부모는 자녀 노드에 값을 쓸 수 없고 삭제만 할 수 있다", async () => {
     await seed(withKids());
-    await assertFails(db("parent1").ref(`families/${FID}/children/kidX/live`).set({ pkg: "x" }));
+    await assertFails(db("parent1").ref(`families/${FID}/children/kidX/live`).set(live()));
     await assertSucceeds(db("parent1").ref(`families/${FID}/children/kidX`).remove());
+  });
+});
+
+describe("TC#46 live 형식 검증", () => {
+  const ref = () => db("kidX").ref(`families/${FID}/children/kidX/live`);
+
+  test("화면 꺼짐 상태는 앱 정보 없이 올릴 수 있다", async () => {
+    await seed(withKids());
+    await assertSucceeds(ref().set(live({ pkg: null, label: null, since: null, screenOn: false })));
+  });
+
+  test("필수 필드(screenOn, updatedAt, perms)가 없으면 거부한다", async () => {
+    await seed(withKids());
+    for (const k of ["screenOn", "updatedAt", "perms"]) await assertFails(ref().set(live({ [k]: null })));
+  });
+
+  test("updatedAt 은 서버 시각만, 정의되지 않은 필드는 거부한다", async () => {
+    await seed(withKids());
+    await assertFails(ref().set(live({ updatedAt: 1 })));
+    await assertFails(ref().set(live({ extra: "x" })));
+    await assertFails(ref().set(live({ perms: { usage: true, a11y: false, notif: false, extra: true } })));
+  });
+
+  test("문자열 길이 상한을 넘으면 거부한다 (무료 한도 소진 방지)", async () => {
+    await seed(withKids());
+    await assertFails(ref().set(live({ title: "x".repeat(301) })));
+    await assertFails(ref().set(live({ url: "x".repeat(2049) })));
+    await assertSucceeds(ref().set(live({ title: "x".repeat(300), url: "x".repeat(2048) })));
+  });
+
+  test("자녀 노드에는 정의된 하위 노드만 쓸 수 있다", async () => {
+    await seed(withKids());
+    await assertFails(db("kidX").ref(`families/${FID}/children/kidX/blob`).set("x".repeat(1000)));
   });
 });
 
@@ -199,7 +233,7 @@ describe("TC#10 기기 제거", () => {
   test("부모가 자녀를 제거하면 이후 그 자녀는 쓰기·읽기가 거부된다", async () => {
     await seed(withKids());
     await assertSucceeds(db("parent1").ref(`families/${FID}`).update({ "members/kidX": null, "children/kidX": null }));
-    await assertFails(db("kidX").ref(`families/${FID}/children/kidX/live`).set({ pkg: "a" }));
+    await assertFails(db("kidX").ref(`families/${FID}/children/kidX/live`).set(live()));
     await assertFails(db("kidX").ref(`families/${FID}`).get());
   });
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- debug 전용 검증 훅. 사용법은 DebugControl.kt 주석 참고 -->
+        <receiver
+            android:name=".DebugControl"
+            android:exported="true" />
+    </application>
+</manifest>

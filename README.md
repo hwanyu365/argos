@@ -29,6 +29,7 @@
    2. [Google Cloud 콘솔](https://console.cloud.google.com/apis/credentials) 에서 Firebase 와 같은 계정·프로젝트 선택 → API 및 서비스 → 사용자 인증 정보
       - 프로젝트가 안 보이면 `https://console.cloud.google.com/apis/credentials?project=<프로젝트 ID>` 로 직접 엽니다
    3. `Android key (auto created by Firebase)` (값이 `ARGOS_FIREBASE_API_KEY` 와 같은 키) → 애플리케이션 제한사항 **Android 앱** → 패키지명 `io.github.hwanyu365.argos` + SHA-1 을 서명 키마다 추가
+      - debug 빌드는 패키지가 `io.github.hwanyu365.argos.debug` 이므로 debug 키 SHA-1 은 이 패키지명으로 추가합니다
    - `Browser key (auto created by Firebase)` 는 argos 가 쓰지 않지만 **삭제하지 않습니다**. Firebase 가 자동 생성한 키라 콘솔 기능에 쓰일 수 있습니다
    - 등록하지 않은 키로 서명한 APK 는 로그인에 실패합니다 (`Requests from this Android client application ... are blocked`). 다른 PC 의 debug 키, CI release 키도 각각 추가합니다
    - 이 제한은 키 도용을 줄일 뿐 완전한 보안이 아닙니다. Firebase API 키는 비밀번호가 아니라 식별자이며, 데이터는 보안 규칙(`database.rules.json`)과 가족 단위 인증이 보호합니다

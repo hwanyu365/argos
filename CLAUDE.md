@@ -22,7 +22,10 @@
 ## 기술 스택
 
 - Kotlin, Jetpack Compose + Material 3, 단일 `app` 모듈, minSdk 26 / targetSdk 35
-- Firebase Auth(Anonymous) + Realtime Database, Room, WorkManager, Compose Navigation, ZXing
+- Firebase Auth(Anonymous) + Realtime Database, Compose Navigation, ZXing
+- 로컬 저장: 플랫폼 `SQLiteOpenHelper`, 주기 작업: 플랫폼 `JobScheduler` → AGP 9·Kotlin 2.4 에서 KSP·Room 의존을 피하려는 선택. 테이블·작업이 늘면 Room·WorkManager 로 옮긴다
+- debug 빌드는 패키지가 `io.github.hwanyu365.argos.debug` 다 (App Distribution release 와 한 기기에 함께 설치)
+- 실기기 검증용 debug 전용 훅: `app/src/debug/.../DebugControl.kt`
 - 위 목록 밖의 의존성 추가는 PR 본문에 이유를 적는다
 
 ## 반드시 지킬 것

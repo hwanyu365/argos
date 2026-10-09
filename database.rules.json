@@ -27,7 +27,26 @@
         },
         "children": {
           "$uid": {
-            ".write": "auth != null && ((auth.uid === $uid && newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child') || (!newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'parent'))"
+            ".write": "auth != null && ((auth.uid === $uid && newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'child') || (!newData.exists() && root.child('families/' + $fid + '/members/' + auth.uid + '/role').val() === 'parent'))",
+            "live": {
+              ".validate": "newData.hasChildren(['screenOn', 'updatedAt', 'perms'])",
+              "pkg": { ".validate": "newData.isString() && newData.val().length <= 255" },
+              "label": { ".validate": "newData.isString() && newData.val().length <= 100" },
+              "since": { ".validate": "newData.isNumber()" },
+              "title": { ".validate": "newData.isString() && newData.val().length <= 300" },
+              "url": { ".validate": "newData.isString() && newData.val().length <= 2048" },
+              "screenOn": { ".validate": "newData.isBoolean()" },
+              "updatedAt": { ".validate": "newData.val() === now" },
+              "perms": {
+                ".validate": "newData.hasChildren(['usage', 'a11y', 'notif'])",
+                "usage": { ".validate": "newData.isBoolean()" },
+                "a11y": { ".validate": "newData.isBoolean()" },
+                "notif": { ".validate": "newData.isBoolean()" },
+                "$other": { ".validate": false }
+              },
+              "$other": { ".validate": false }
+            },
+            "$other": { ".validate": false }
           }
         },
         "apps": {
