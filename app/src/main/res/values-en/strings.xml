@@ -23,8 +23,8 @@
     <string name="parent_home_title">Family</string>
     <string name="invite">Invite</string>
     <string name="no_children">No child devices yet.\nTap \'Invite\' to add one.</string>
-    <string name="invite_child">Add child device</string>
-    <string name="invite_parent">Add guardian</string>
+    <string name="invite_child">Child</string>
+    <string name="invite_parent">Guardian</string>
     <string name="invite_hint">On the other device, open Argos, tap \'Join with invite code\', then scan the QR or type the code.</string>
     <string name="expires_in">Expires in %1$s</string>
     <string name="expired">Expired</string>
@@ -57,4 +57,5 @@
     <string name="unit_sec">s</string>
     <string name="unit_min">m</string>
     <string name="unit_hour">h</string>
+    <string name="scan_failed">Could not read the QR code. Please type the code instead.</string>
 </resources>

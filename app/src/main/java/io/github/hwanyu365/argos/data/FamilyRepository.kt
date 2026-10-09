@@ -45,12 +45,12 @@ class FamilyRepository {
         return fid
     }
 
-    /** FR#4: 발급한 부모가 참여 역할을 정한다. 만료는 서버 시각 기준 10분. */
-    suspend fun createInvite(fid: String, role: Role): String {
-        val serverNow = serverNow()
+    /** FR#4: 발급한 부모가 참여 역할을 정한다. 만료는 서버 시각 기준 10분. 반환: 코드와 만료 시각(서버 기준). */
+    suspend fun createInvite(fid: String, role: Role): Pair<String, Long> {
         val code = PairingCode.generate()
-        db.getReference("pairing/$code").setValue(mapOf("familyId" to fid, "role" to role.key, "expiresAt" to PairingCode.expiresAt(serverNow))).await()
-        return code
+        val expiresAt = PairingCode.expiresAt(serverNow())
+        db.getReference("pairing/$code").setValue(mapOf("familyId" to fid, "role" to role.key, "expiresAt" to expiresAt)).await()
+        return code to expiresAt
     }
 
     /** 사용했거나 닫은 초대 코드는 지운다. 만료된 코드가 쌓이지 않게 한다. */

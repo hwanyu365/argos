@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -46,18 +47,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import io.github.hwanyu365.argos.ArgosApp
 import io.github.hwanyu365.argos.R
 import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.FamilySnapshot
-import io.github.hwanyu365.argos.data.PairingCode
 import io.github.hwanyu365.argos.data.Role
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private val Empty = FamilySnapshot(emptyList(), emptyMap(), emptyMap())
 
@@ -151,23 +149,26 @@ private fun LiveLines(card: ChildCard) {
 /** FR#4: 역할을 고르면 코드를 발급하고, 닫거나 다시 발급하면 이전 코드를 지운다. */
 @Composable
 private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> Unit) {
-    val scope = rememberCoroutineScope()
+    // 발급·삭제는 앱 수준 scope 에서 보낸다. 다이얼로그가 닫혀 화면 scope 가 취소돼도 늦게 끝난 발급분까지 지운다.
+    val appScope = (LocalContext.current.applicationContext as ArgosApp).scope
+    val codes = remember { InviteCodes() }
+    val now = rememberServerNow(repo)
     var role by remember { mutableStateOf(Role.CHILD) }
-    var code by remember { mutableStateOf<String?>(null) }
-    var issuedAt by remember { mutableLongStateOf(0L) }
+    var shown by remember { mutableStateOf<Pair<String, Long>?>(null) }
     var error by remember { mutableStateOf(false) }
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val remaining = (issuedAt + PairingCode.TTL_MS - now).coerceAtLeast(0)
+    val remaining = shown?.let { (it.second - now).coerceAtLeast(0) } ?: 0
+
+    fun delete(list: List<String>) = list.forEach { c -> appScope.launch { runCatching { repo.deleteInvite(c) }.onFailure { Log.w(TAG, "invite delete failed", it) } } }
 
     fun issue() {
-        val old = code
-        code = null
+        val token = codes.begin()
+        delete(codes.takeObsolete())
+        shown = null
         error = false
-        scope.launch {
-            old?.let { runCatching { repo.deleteInvite(it) } }
-            runCatching { repo.createInvite(fid, role) }.onSuccess {
-                code = it
-                issuedAt = System.currentTimeMillis()
+        appScope.launch {
+            runCatching { repo.createInvite(fid, role) }.onSuccess { (code, expiresAt) ->
+                if (codes.complete(token, code)) shown = code to expiresAt
+                delete(codes.takeObsolete())
             }.onFailure {
                 Log.w(TAG, "invite failed", it)
                 error = true
@@ -176,13 +177,7 @@ private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> U
     }
 
     LaunchedEffect(role) { issue() }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = System.currentTimeMillis()
-            delay(1_000)
-        }
-    }
-    DisposableEffect(Unit) { onDispose { code?.let { c -> scope.cleanupInvite(repo, c) } } }
+    DisposableEffect(Unit) { onDispose { delete(codes.close()) } }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -195,7 +190,7 @@ private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> U
                         SegmentedButton(selected = role == r, onClick = { role = r }, shape = SegmentedButtonDefaults.itemShape(i, 2)) { Text(stringResource(label)) }
                     }
                 }
-                val c = code
+                val c = shown?.first
                 when {
                     error -> Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
                     c == null -> Text("…")
@@ -221,9 +216,6 @@ private fun InviteDialog(repo: FamilyRepository, fid: String, onDismiss: () -> U
     )
 }
 
-// 다이얼로그가 닫히며 scope 가 취소돼도 삭제는 끝까지 보낸다.
-private fun CoroutineScope.cleanupInvite(repo: FamilyRepository, code: String) = launch { withContext(NonCancellable) { runCatching { repo.deleteInvite(code) } } }
-
 private fun qrBitmap(text: String, size: Int = 512): Bitmap {
     val m = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
     val px = IntArray(size * size) { if (m[it % size, it / size]) 0xFF000000.toInt() else 0xFFFFFFFF.toInt() }
@@ -237,6 +229,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
     val now = rememberServerNow(repo)
     val scope = rememberCoroutineScope()
     var removing by remember { mutableStateOf(false) }
+    var removeFailed by remember { mutableStateOf(false) }
     val member = family.members.firstOrNull { it.uid == uid }
     val c = family.live[uid]
 
@@ -252,14 +245,19 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
             }
         }
         TextButton(onClick = { removing = true }) { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }
+        if (removeFailed) Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
     }
 
     if (removing) {
         ConfirmDialog(stringResource(R.string.remove_confirm, member?.name.orEmpty()), stringResource(R.string.remove), onDismiss = { removing = false }) {
             removing = false
+            removeFailed = false
             scope.launch {
-                runCatching { repo.removeMember(fid, uid) }
-                onBack()
+                // FR#6: 실패하면 제거된 것처럼 돌아가지 않고 이 화면에 남아 알린다.
+                runCatching { repo.removeMember(fid, uid) }.onSuccess { onBack() }.onFailure {
+                    Log.w(TAG, "remove member failed", it)
+                    removeFailed = true
+                }
             }
         }
     }

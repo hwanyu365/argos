@@ -42,12 +42,17 @@ internal fun JoinScreen(repo: FamilyRepository, onBack: () -> Unit, onJoined: (S
     var code by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    val scanFailed = stringResource(R.string.scan_failed)
 
     // Google 코드 스캐너는 카메라 권한 없이 Play 서비스 UI 로 스캔한다.
     fun scan() {
         GmsBarcodeScanning.getClient(context, GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
             .startScan()
-            .addOnSuccessListener { b -> b.rawValue?.let { code = it } }
+            .addOnSuccessListener { b -> b.rawValue?.let { code = InviteCodes.fromScan(it) } }
+            .addOnFailureListener {
+                Log.w(TAG, "scan failed", it)
+                error = scanFailed
+            }
     }
 
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

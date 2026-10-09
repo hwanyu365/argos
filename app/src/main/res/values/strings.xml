@@ -24,8 +24,8 @@
     <string name="parent_home_title">우리 가족</string>
     <string name="invite">초대</string>
     <string name="no_children">아직 연결된 자녀 기기가 없습니다.\n\'초대\'를 눌러 자녀 기기를 추가하세요.</string>
-    <string name="invite_child">자녀 기기 추가</string>
-    <string name="invite_parent">보호자 추가</string>
+    <string name="invite_child">자녀 기기</string>
+    <string name="invite_parent">보호자</string>
     <string name="invite_hint">상대 기기의 Argos 에서 \'초대 코드로 참여\'를 누르고 QR 을 스캔하거나 코드를 입력하세요.</string>
     <string name="expires_in">%1$s 후 만료</string>
     <string name="expired">만료됨</string>
@@ -58,4 +58,5 @@
     <string name="unit_sec">초</string>
     <string name="unit_min">분</string>
     <string name="unit_hour">시간</string>
+    <string name="scan_failed">QR 을 읽지 못했습니다. 코드를 직접 입력해 주세요.</string>
 </resources>
