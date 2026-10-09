@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- X#0: 대상 앱을 OS 수준에서 한정한다. 목록은 DetailExtractor.WATCHED_PACKAGES 와 같아야 한다 (TC#44).
+     flagIncludeNotImportantViews: Shorts 의 reel_player_footer_container 는 접근성에 중요하지 않은 뷰로 표시돼 기본 트리에서 빠진다 (GH-36 실측). -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/a11y_description"
+    android:notificationTimeout="1000"
+    android:packageNames="com.android.chrome,com.sec.android.app.sbrowser,com.google.android.youtube" />

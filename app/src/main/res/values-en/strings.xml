@@ -72,4 +72,12 @@
     <string name="period_empty">No records in this period</string>
     <string name="chart_hint">Tap a bar to see that day</string>
     <string name="chart_desc">Daily usage bar chart, %1$d bars, highest day %2$s</string>
+    <string name="liveness_limited">Limited</string>
+    <string name="optional_title">Optional: video titles and web addresses</string>
+    <string name="restricted_hint">On Android 13+, first turn on Settings &gt; Apps &gt; Argos &gt; ⋮ &gt; \'Allow restricted settings\'.</string>
+    <string name="perm_a11y">Accessibility (web address, Shorts title)</string>
+    <string name="perm_a11y_desc">Reads only the address in Chrome and Samsung Internet and YouTube Shorts titles</string>
+    <string name="perm_notif">Notification access (video title)</string>
+    <string name="perm_notif_desc">Reads the title of the playing video. Notification contents are not read</string>
+    <string name="a11y_description">Reads only the address bar of Chrome and Samsung Internet and YouTube Shorts titles to show a guardian. No other app screens are read.</string>
 </resources>

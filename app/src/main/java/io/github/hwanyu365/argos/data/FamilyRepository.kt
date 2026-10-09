@@ -21,7 +21,7 @@ import kotlinx.coroutines.withTimeout
 
 data class Member(val uid: String, val role: Role, val name: String)
 
-data class ChildLive(val live: Live?, val updatedAt: Long?, val usageGranted: Boolean = true)
+data class ChildLive(val live: Live?, val updatedAt: Long?, val usageGranted: Boolean = true, val detailsGranted: Boolean = true)
 
 data class FamilySnapshot(val members: List<Member>, val live: Map<String, ChildLive>, val apps: Map<String, String>)
 
@@ -99,7 +99,8 @@ class FamilyRepository {
                         null
                     },
                     updatedAt = l.child("updatedAt").getValue(Long::class.java),
-                    usageGranted = l.child("perms/usage").getValue(Boolean::class.java) ?: true
+                    usageGranted = l.child("perms/usage").getValue(Boolean::class.java) ?: true,
+                    detailsGranted = l.child("perms/a11y").getValue(Boolean::class.java) != false && l.child("perms/notif").getValue(Boolean::class.java) != false
                 )
             },
             apps = s.child("apps").children.associate { it.key!! to it.child("label").getValue(String::class.java).orEmpty() }

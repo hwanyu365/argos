@@ -110,7 +110,7 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(children, key = { it.uid }) { m ->
                         val c = family.live[m.uid]
-                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)) { onOpen(m.uid) }
+                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true)) { onOpen(m.uid) }
                     }
                 }
             }
@@ -141,7 +141,7 @@ private fun ChildCardView(card: ChildCard, onClick: () -> Unit) {
 
 @Composable
 private fun LiveLines(card: ChildCard) {
-    val live = card.liveness == Liveness.OK
+    val live = card.liveness?.current == true
     when {
         card.sinceUpdateMs == null -> Text(stringResource(R.string.never_updated), style = MaterialTheme.typography.bodyMedium)
         // FR#18: 기록이 끊겼으면 '지금' 상태가 아니라 마지막으로 확인된 상태임을 밝힌다.
@@ -159,7 +159,7 @@ private fun LiveLines(card: ChildCard) {
         }
     }
     // S#9: PiP 로 함께 보이는 앱. 현재 앱이 없을 때(홈 화면 위 PiP)도 보여준다.
-    if (card.liveness == Liveness.OK) {
+    if (live) {
         card.pipLabel?.let { label ->
             Text(stringResource(R.string.pip_line, label, durationText(card.pipElapsedMs ?: 0)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
         }
@@ -172,6 +172,7 @@ private fun LiveLines(card: ChildCard) {
 private fun LivenessBadge(state: Liveness) {
     val (label, bg, fg) = when (state) {
         Liveness.OK -> Triple(R.string.liveness_ok, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        Liveness.LIMITED -> Triple(R.string.liveness_limited, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
         Liveness.DELAYED -> Triple(R.string.liveness_delayed, MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
         Liveness.STOPPED -> Triple(R.string.liveness_stopped, MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
     }
@@ -290,7 +291,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
         if (tab == 0) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true)
+                    val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true)
                     LiveLines(card)
                     card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }

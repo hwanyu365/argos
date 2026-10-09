@@ -73,4 +73,12 @@
     <string name="period_empty">이 기간에는 기록이 없어요</string>
     <string name="chart_hint">막대를 누르면 그날 사용 시간이 보여요</string>
     <string name="chart_desc">일별 사용 시간 막대 %1$d개, 가장 많은 날 %2$s</string>
+    <string name="liveness_limited">상세 제한</string>
+    <string name="optional_title">선택: 영상 제목·웹 주소</string>
+    <string name="restricted_hint">Android 13 이상은 먼저 설정 &gt; 애플리케이션 &gt; Argos &gt; ⋮ &gt; \'제한된 설정 허용\'을 켜야 아래 항목을 허용할 수 있어요.</string>
+    <string name="perm_a11y">접근성 (웹 주소·Shorts 제목)</string>
+    <string name="perm_a11y_desc">Chrome·삼성 인터넷의 주소와 YouTube Shorts 제목만 확인해요</string>
+    <string name="perm_notif">알림 접근 (영상 제목)</string>
+    <string name="perm_notif_desc">재생 중인 영상의 제목을 확인해요. 알림 내용은 읽지 않아요</string>
+    <string name="a11y_description">Chrome·삼성 인터넷의 주소창과 YouTube Shorts 제목만 읽어 보호자에게 보여줍니다. 다른 앱의 화면은 읽지 않습니다.</string>
 </resources>
