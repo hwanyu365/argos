@@ -1,6 +1,8 @@
 package io.github.hwanyu365.argos.ui
 
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -51,9 +53,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
@@ -64,6 +68,7 @@ import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.FamilySnapshot
 import io.github.hwanyu365.argos.data.Member
 import io.github.hwanyu365.argos.data.Role
+import java.net.URLDecoder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -178,7 +183,7 @@ private fun ChildCardView(card: ChildCard, onRemove: () -> Unit, onClick: () -> 
 }
 
 @Composable
-private fun LiveLines(card: ChildCard) {
+private fun LiveLines(card: ChildCard, onLink: ((String) -> Unit)? = null) {
     val live = card.liveness?.current == true
     when {
         card.sinceUpdateMs == null -> Text(stringResource(R.string.never_updated), style = MaterialTheme.typography.bodyMedium)
@@ -193,7 +198,7 @@ private fun LiveLines(card: ChildCard) {
         else -> {
             Text(card.appLabel, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
             card.elapsedMs?.let { Text(stringResource(R.string.using_for, durationText(it)), style = MaterialTheme.typography.bodyMedium) }
-            (card.title ?: card.url)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            (card.title ?: card.url)?.let { DetailText(it, DetailLink.of(card.pkg, card.title, card.url), onLink, MaterialTheme.typography.bodyMedium) }
         }
     }
     // S#9: PiP 로 함께 보이는 앱. 현재 앱이 없을 때(홈 화면 위 PiP)도 보여준다.
@@ -317,6 +322,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
     var failed by remember(fid, uid) { mutableStateOf(false) }
     val usage by remember(fid, uid) { repo.usage(fid, uid).catch { failed = true } }.collectAsState(null)
     val pager = rememberPagerState { DETAIL_TABS.size }
+    var opening by remember { mutableStateOf<String?>(null) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -332,7 +338,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
         HorizontalPager(pager, Modifier.weight(1f), verticalAlignment = Alignment.Top) { page ->
             val days = DETAIL_TABS[page].first
             if (days == TIMELINE) {
-                TimelineTab(repo, fid, uid, family.apps)
+                TimelineTab(repo, fid, uid, family.apps) { opening = it }
                 return@HorizontalPager
             }
             val live: (@Composable () -> Unit)? = if (days > 1) {
@@ -342,7 +348,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true)
-                            LiveLines(card)
+                            LiveLines(card) { opening = it }
                             card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         }
                     }
@@ -351,6 +357,51 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
             PeriodTab(usage, failed, days, family.apps, live)
         }
     }
+
+    opening?.let { LinkDialog(it) { opening = null } }
+}
+
+/** FR#20: 링크가 있으면 눌러서 열 수 있는 상세. 색과 밑줄로 링크임을 보인다. */
+@Composable
+internal fun DetailText(text: String, link: String?, onLink: ((String) -> Unit)?, style: TextStyle) {
+    if (link == null || onLink == null) {
+        Text(text, style = style, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    } else {
+        Text(
+            text,
+            style = style,
+            color = MaterialTheme.colorScheme.primary,
+            textDecoration = TextDecoration.Underline,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clickable(onClickLabel = stringResource(R.string.link_open)) { onLink(link) }
+        )
+    }
+}
+
+/** FR#20: 부모 계정 기록에 남을 수 있으므로 열기 전에 주소를 보여주고 묻는다. */
+@Composable
+private fun LinkDialog(link: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.link_confirm_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // 검색어가 %XX 로 인코딩돼 읽을 수 없으므로 보여줄 때만 푼다. 여는 주소는 그대로다.
+                Text(runCatching { URLDecoder.decode(link, "UTF-8") }.getOrDefault(link), style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.link_confirm_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                // 열 앱이 없으면 아무 일도 하지 않는다.
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }.onFailure { Log.w(TAG, "open link failed", it) }
+            }) { Text(stringResource(R.string.link_open)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
+    )
 }
 
 private const val TIMELINE = 0

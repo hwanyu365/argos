@@ -92,4 +92,7 @@
     <string name="timeline_prev">이전 날</string>
     <string name="timeline_next">다음 날</string>
     <string name="timeline_empty">이 날은 기록이 없어요</string>
+    <string name="link_open">열기</string>
+    <string name="link_confirm_title">부모 폰에서 열까요?</string>
+    <string name="link_confirm_note">자녀 기기와 화면이 다를 수 있고, 이 폰의 방문·시청 기록에 남을 수 있어요. YouTube 앱 영상은 제목으로 검색한 결과가 열려요.</string>
 </resources>

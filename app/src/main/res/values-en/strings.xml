@@ -91,4 +91,7 @@
     <string name="timeline_prev">Previous day</string>
     <string name="timeline_next">Next day</string>
     <string name="timeline_empty">No records on this day</string>
+    <string name="link_open">Open</string>
+    <string name="link_confirm_title">Open on this phone?</string>
+    <string name="link_confirm_note">It may differ from what the child saw and will be saved in this phone history. YouTube app videos open as a title search.</string>
 </resources>
