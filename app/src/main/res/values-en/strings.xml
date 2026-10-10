@@ -64,13 +64,11 @@
     <string name="last_seen">Last seen: %1$s</string>
     <string name="pip_line">PiP: %1$s for %2$s</string>
     <string name="tab_live">Live</string>
-    <string name="tab_period">Period</string>
-    <string name="period_today">Today</string>
     <string name="period_7">7 days</string>
     <string name="period_30">30 days</string>
     <string name="period_total">Total screen time</string>
     <string name="period_empty">No records in this period</string>
-    <string name="chart_hint">Tap a bar to see that day</string>
+    <string name="chart_hint">Tap a bar to see apps used that day</string>
     <string name="chart_desc">Daily usage bar chart, %1$d bars, highest day %2$s</string>
     <string name="liveness_limited">Limited</string>
     <string name="optional_title">Optional: video titles and web addresses</string>
@@ -81,4 +79,10 @@
     <string name="perm_notif_desc">Reads the title of the playing video. Notification contents are not read</string>
     <string name="a11y_description">Reads only the address bar of Chrome and Samsung Internet and YouTube Shorts titles to show a guardian. No other app screens are read.</string>
     <string name="shorts_within">Shorts: %1$s of this</string>
+    <string name="today_total">Screen time today</string>
+    <string name="period_day_total">Screen time on %1$d/%2$d</string>
+    <string name="period_all">Whole period</string>
+    <string name="chart_hint_selected">Tap the same bar again for the whole period</string>
+    <string name="more_options">More options</string>
+    <string name="today_empty">No records yet today</string>
 </resources>

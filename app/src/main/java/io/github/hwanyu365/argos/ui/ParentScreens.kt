@@ -14,12 +14,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -32,7 +38,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -56,6 +62,7 @@ import io.github.hwanyu365.argos.ArgosApp
 import io.github.hwanyu365.argos.R
 import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.FamilySnapshot
+import io.github.hwanyu365.argos.data.Member
 import io.github.hwanyu365.argos.data.Role
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -94,6 +101,9 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
     val now = rememberServerNow(repo)
     var inviting by remember { mutableStateOf(false) }
     var resetting by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf<Member?>(null) }
+    var removeFailed by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val children = family.members.filter { it.role == Role.CHILD }
 
     Scaffold(floatingActionButton = { ExtendedFloatingActionButton(onClick = { inviting = true }) { Text(stringResource(R.string.invite)) } }) { padding ->
@@ -102,6 +112,7 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
                 Text(stringResource(R.string.parent_home_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
                 TextButton(onClick = { resetting = true }) { Text(stringResource(R.string.reset)) }
             }
+            if (removeFailed) Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp))
             if (children.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.no_children), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
@@ -110,7 +121,10 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(children, key = { it.uid }) { m ->
                         val c = family.live[m.uid]
-                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true)) { onOpen(m.uid) }
+                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true), onRemove = {
+                            removeFailed = false
+                            removing = m
+                        }) { onOpen(m.uid) }
                     }
                 }
             }
@@ -118,6 +132,19 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
     }
 
     if (inviting) InviteDialog(repo, fid) { inviting = false }
+    removing?.let { m ->
+        ConfirmDialog(stringResource(R.string.remove_confirm, m.name), stringResource(R.string.remove), onDismiss = { removing = null }) {
+            removing = null
+            removeFailed = false
+            scope.launch {
+                // FR#6: 실패하면 목록에 남은 채로 알린다.
+                runCatching { repo.removeMember(fid, m.uid) }.onFailure {
+                    Log.w(TAG, "remove member failed", it)
+                    removeFailed = true
+                }
+            }
+        }
+    }
     if (resetting) {
         ConfirmDialog(stringResource(R.string.reset_confirm), stringResource(R.string.reset), onDismiss = { resetting = false }) {
             resetting = false
@@ -127,12 +154,23 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
 }
 
 @Composable
-private fun ChildCardView(card: ChildCard, onClick: () -> Unit) {
+private fun ChildCardView(card: ChildCard, onRemove: () -> Unit, onClick: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(card.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 card.liveness?.let { LivenessBadge(it) }
+                // GH-43: 기기를 추가하는 화면에서 제거도 한다.
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(painterResource(R.drawable.ic_more_vert), stringResource(R.string.more_options)) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }, onClick = {
+                            menu = false
+                            onRemove()
+                        })
+                    }
+                }
             }
             LiveLines(card)
         }
@@ -266,54 +304,49 @@ private fun qrBitmap(text: String, size: Int = 512): Bitmap {
     return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
 }
 
-/** 자녀 한 명의 상세. UC2·UC3 에서 기간·타임라인 탭이 붙는다. */
+/** 자녀 한 명의 상세: [실시간 | 7일 | 30일] 탭을 좌우로 넘긴다 (GH-43). */
 @Composable
 internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBack: () -> Unit) {
     val family = rememberFamily(repo, fid)
     val now = rememberServerNow(repo)
     val scope = rememberCoroutineScope()
-    var removing by remember { mutableStateOf(false) }
-    var removeFailed by remember { mutableStateOf(false) }
-    var tab by remember { mutableIntStateOf(0) }
     val member = family.members.firstOrNull { it.uid == uid }
     val c = family.live[uid]
+    // 세 탭이 같은 기록을 쓰므로 구독은 한 번만 한다.
+    // 구독 오류를 빈 기록으로 바꾸면 '사용하지 않음'으로 오해되므로 따로 표시한다.
+    var failed by remember(fid, uid) { mutableStateOf(false) }
+    val usage by remember(fid, uid) { repo.usage(fid, uid).catch { failed = true } }.collectAsState(null)
+    val pager = rememberPagerState { DETAIL_TABS.size }
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            IconButton(onClick = onBack) { Icon(painterResource(R.drawable.ic_arrow_back), stringResource(R.string.back)) }
             Text(member?.name.orEmpty(), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
         }
-        PrimaryTabRow(selectedTabIndex = tab) {
-            listOf(R.string.tab_live, R.string.tab_period).forEachIndexed { i, label ->
-                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(label)) })
+        // Secondary 표시 줄은 탭 폭 전체를 차지한다.
+        SecondaryTabRow(selectedTabIndex = pager.currentPage) {
+            DETAIL_TABS.forEachIndexed { i, (_, label) ->
+                Tab(selected = pager.currentPage == i, onClick = { scope.launch { pager.animateScrollToPage(i) } }, text = { Text(stringResource(label)) })
             }
         }
-        if (tab == 0) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true)
-                    LiveLines(card)
-                    card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        HorizontalPager(pager, Modifier.weight(1f), verticalAlignment = Alignment.Top) { page ->
+            val days = DETAIL_TABS[page].first
+            val live: (@Composable () -> Unit)? = if (days > 1) {
+                null
+            } else {
+                {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val card = ChildCard.of(member?.name.orEmpty(), c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true)
+                            LiveLines(card)
+                            card.url?.takeIf { card.title != null }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        }
+                    }
                 }
             }
-            TextButton(onClick = { removing = true }) { Text(stringResource(R.string.remove_device), color = MaterialTheme.colorScheme.error) }
-            if (removeFailed) Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
-        } else {
-            PeriodTab(repo, fid, uid, family.apps)
-        }
-    }
-
-    if (removing) {
-        ConfirmDialog(stringResource(R.string.remove_confirm, member?.name.orEmpty()), stringResource(R.string.remove), onDismiss = { removing = false }) {
-            removing = false
-            removeFailed = false
-            scope.launch {
-                // FR#6: 실패하면 제거된 것처럼 돌아가지 않고 이 화면에 남아 알린다.
-                runCatching { repo.removeMember(fid, uid) }.onSuccess { onBack() }.onFailure {
-                    Log.w(TAG, "remove member failed", it)
-                    removeFailed = true
-                }
-            }
+            PeriodTab(usage, failed, days, family.apps, live)
         }
     }
 }
+
+private val DETAIL_TABS = listOf(1 to R.string.tab_live, 7 to R.string.period_7, 30 to R.string.period_30)
