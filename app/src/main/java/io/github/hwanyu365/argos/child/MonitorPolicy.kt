@@ -3,8 +3,10 @@ package io.github.hwanyu365.argos.child
 /** spec FR#7. 선언 순서가 체크리스트 표시 순서다 (필수 먼저). */
 enum class Permission(val required: Boolean) {
     USAGE(true),
-    POST_NOTIFICATIONS(true),
     BATTERY(true),
+
+    // 알림이 꺼져도 Foreground Service 는 유지된다 (GH-53 실측). 자녀가 알림을 끄는 것은 허용한다 (NFR#6).
+    POST_NOTIFICATIONS(false),
     ACCESSIBILITY(false),
     NOTIFICATION_LISTENER(false)
 }
