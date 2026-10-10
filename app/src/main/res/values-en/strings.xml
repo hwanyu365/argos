@@ -40,7 +40,7 @@
     <string name="reset">Reset</string>
     <string name="reset_confirm">Clears this device\'s role and family link and returns to the start screen.</string>
     <string name="permissions_title">Required permissions</string>
-    <string name="permissions_body">Allow all of these to start protection.</string>
+    <string name="permissions_body">Allow the required permissions to start protection.</string>
     <string name="perm_usage">Usage access</string>
     <string name="perm_usage_desc">Shows which app is in use</string>
     <string name="perm_post">Notifications</string>

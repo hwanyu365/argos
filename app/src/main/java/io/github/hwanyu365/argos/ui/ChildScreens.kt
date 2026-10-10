@@ -60,8 +60,10 @@ internal fun ChildPermissions(onStart: () -> Unit, onReset: () -> Unit) {
         Permission.entries.filter { it.required }.forEach { PermissionRow(it, perms.granted(it)) }
         // FR#7 선택 권한: 없어도 보호는 시작된다.
         Text(stringResource(R.string.optional_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        PermissionRow(Permission.POST_NOTIFICATIONS, perms.granted(Permission.POST_NOTIFICATIONS))
+        // '제한된 설정 허용'이 먼저 필요한 것은 접근성·알림 접근뿐이라 그 두 항목 바로 위에 안내한다.
         Text(stringResource(R.string.restricted_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Permission.entries.filterNot { it.required }.forEach { PermissionRow(it, perms.granted(it)) }
+        Permission.entries.filterNot { it.required || it == Permission.POST_NOTIFICATIONS }.forEach { PermissionRow(it, perms.granted(it)) }
         Button(onClick = onStart, enabled = perms.canStart, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text(stringResource(R.string.start_monitoring)) }
         TextButton(onClick = { resetting = true }) { Text(stringResource(R.string.reset)) }
     }
