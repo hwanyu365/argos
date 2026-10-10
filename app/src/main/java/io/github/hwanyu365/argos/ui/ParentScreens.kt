@@ -121,7 +121,10 @@ internal fun ParentHome(repo: FamilyRepository, fid: String, onOpen: (String) ->
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(children, key = { it.uid }) { m ->
                         val c = family.live[m.uid]
-                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true), onRemove = { removing = m }) { onOpen(m.uid) }
+                        ChildCardView(ChildCard.of(m.name, c?.live, c?.updatedAt, family.apps, now, c?.usageGranted ?: true, c?.detailsGranted ?: true), onRemove = {
+                            removeFailed = false
+                            removing = m
+                        }) { onOpen(m.uid) }
                     }
                 }
             }
