@@ -65,7 +65,7 @@ internal fun TimelineTab(repo: FamilyRepository, fid: String, uid: String, apps:
             rows == null -> Text("…")
             rows.isEmpty() -> Text(stringResource(R.string.timeline_empty), style = MaterialTheme.typography.bodyLarge)
             else -> LazyColumn {
-                items(rows, key = { "${it.start}_${it.label}" }) { row ->
+                items(rows, key = { it.key }) { row ->
                     TimelineItem(row)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
