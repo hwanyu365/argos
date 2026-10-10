@@ -25,6 +25,8 @@ class DetailLinkTest {
         assertNull(DetailLink.of(chrome, null, "a b.com"))
         assertNull(DetailLink.of(chrome, null, "/path/only"))
         assertNull(DetailLink.of(chrome, null, "evil.com/‮moc.elgoog"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/​x"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/ x"))
         assertNull(DetailLink.of(chrome, "제목", null))
     }
 
@@ -45,7 +47,7 @@ class DetailLinkTest {
     }
 
     @Test
-    fun `TC#59 대문자 스킴도 웹 주소로 본다`() {
-        assertEquals("HTTPS://example.com", DetailLink.of(chrome, null, "HTTPS://example.com"))
+    fun `TC#59 대문자 스킴도 웹 주소로 보고 소문자로 연다`() {
+        assertEquals("https://example.com", DetailLink.of(chrome, null, "HTTPS://example.com"))
     }
 }

@@ -10,8 +10,8 @@ object DetailLink {
     private val SCHEME = Regex("^[A-Za-z][A-Za-z0-9+.-]*://")
     private const val SEARCH = "https://www.youtube.com/results?search_query="
 
-    // 줄바꿈 같은 제어 문자와 표시 순서를 뒤집는 방향 문자는 확인 창을 속일 수 있다.
-    private val HIDDEN = Regex("[\\p{Cc}\u200E\u200F\u202A-\u202E\u2066-\u2069]")
+    // 제어 문자·서식 문자(폭 0·방향 문자)·줄 구분자는 확인 창에서 보이지 않거나 표시를 바꿔 속일 수 있다.
+    private val HIDDEN = Regex("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]")
 
     /** FR#20 확인 창에 보일 주소. 우리가 만든 검색어만 읽을 수 있게 풀고, 자녀가 올린 주소는 그대로 보여준다. */
     fun display(link: String): String {
@@ -34,6 +34,9 @@ object DetailLink {
         if ('…' in url || HIDDEN.containsMatchIn(url)) return null
         val full = if (SCHEME.containsMatchIn(url)) url else "https://$url"
         val uri = runCatching { URI(full) }.getOrNull() ?: return null
-        return full.takeIf { uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty() }
+        val scheme = uri.scheme?.lowercase()
+        if (scheme !in setOf("http", "https") || uri.host.isNullOrEmpty()) return null
+        // 인텐트 해석은 스킴 대소문자를 구분하므로 소문자로 맞춘다.
+        return scheme + full.substring(scheme!!.length)
     }
 }
