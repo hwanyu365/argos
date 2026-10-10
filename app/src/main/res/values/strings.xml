@@ -86,4 +86,10 @@
     <string name="chart_hint_selected">같은 막대를 다시 누르면 전체 기간으로 돌아가요</string>
     <string name="more_options">더보기</string>
     <string name="today_empty">오늘은 아직 기록이 없어요</string>
+    <string name="tab_timeline">타임라인</string>
+    <string name="timeline_today">오늘 (%1$d/%2$d)</string>
+    <string name="timeline_date">%1$d/%2$d</string>
+    <string name="timeline_prev">이전 날</string>
+    <string name="timeline_next">다음 날</string>
+    <string name="timeline_empty">이 날은 기록이 없어요</string>
 </resources>

@@ -1,5 +1,6 @@
 package io.github.hwanyu365.argos.child
 
+import io.github.hwanyu365.argos.data.PkgKey
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -22,6 +23,15 @@ object DailyAggregator {
             Day(apps, union(list.map { it.first.third }) / 1000, shorts)
         }
     }
+
+    /** FR#17: 날짜별 세션 목록. 자정을 넘는 세션은 날짜마다 잘라 담는다 (D#6). */
+    fun timeline(sessions: List<Session>, zone: ZoneId): Map<LocalDate, List<Session>> = sessions
+        .flatMap { s -> split(s, zone).map { (date, _, r) -> date to s.copy(start = r.first, end = r.last) } }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, list) -> list.sortedBy { it.start } }
+
+    /** D#6: 다시 올려도 같은 키라 날짜 노드 덮어쓰기가 멱등이다. */
+    fun timelineKey(s: Session): String = "${s.start}_${PkgKey.encode(s.pkg)}"
 
     /** A#3: 올린 날은 다시 올려도 같은 값이므로, 실패했을 수 있는 마지막 날부터 오늘까지 다시 올린다. */
     fun uploadDays(lastUploaded: LocalDate?, earliest: LocalDate?, today: LocalDate): List<LocalDate> {

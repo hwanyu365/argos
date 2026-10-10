@@ -10,12 +10,17 @@ import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import io.github.hwanyu365.argos.child.Live
 import io.github.hwanyu365.argos.child.LivePip
+import io.github.hwanyu365.argos.child.Session
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 
@@ -73,50 +78,70 @@ class FamilyRepository {
         return fid to role
     }
 
-    fun family(fid: String): Flow<FamilySnapshot> = db.getReference("families/$fid").values { s ->
-        FamilySnapshot(
-            members = s.child("members").children.mapNotNull { m ->
+    /**
+     * D#7: 가족 노드 전체가 아니라 멤버·앱 이름·자녀별 live 만 구독한다.
+     * 타임라인·일별 기록이 쌓여도 앱을 열 때 받는 양이 늘지 않는다 (NFR#1).
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun family(fid: String): Flow<FamilySnapshot> {
+        val ref = db.getReference("families/$fid")
+        val apps = ref.child("apps").values { s -> s.children.associate { it.key!! to it.child("label").getValue(String::class.java).orEmpty() } }
+        return ref.child("members").values { s ->
+            s.children.mapNotNull { m ->
                 val role = Role.of(m.child("role").getValue(String::class.java)) ?: return@mapNotNull null
                 Member(m.key!!, role, m.child("name").getValue(String::class.java).orEmpty())
-            },
-            live = s.child("children").children.associate { c ->
-                val l = c.child("live")
-                c.key!! to ChildLive(
-                    live = if (l.exists()) {
-                        Live(
-                            pkg = l.child("pkg").getValue(String::class.java),
-                            label = l.child("label").getValue(String::class.java),
-                            since = l.child("since").getValue(Long::class.java),
-                            title = l.child("title").getValue(String::class.java),
-                            url = l.child("url").getValue(String::class.java),
-                            screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false,
-                            pip = l.child("pip/pkg").getValue(String::class.java)?.let { pkg ->
-                                // since 가 없으면 경과 시간을 계산할 수 없으므로 PiP 를 보여주지 않는다.
-                                l.child("pip/since").getValue(Long::class.java)?.let { LivePip(pkg, l.child("pip/label").getValue(String::class.java), it) }
-                            }
-                        )
-                    } else {
-                        null
-                    },
-                    updatedAt = l.child("updatedAt").getValue(Long::class.java),
-                    usageGranted = l.child("perms/usage").getValue(Boolean::class.java) ?: true,
-                    detailsGranted = l.child("perms/a11y").getValue(Boolean::class.java) != false && l.child("perms/notif").getValue(Boolean::class.java) != false
-                )
-            },
-            apps = s.child("apps").children.associate { it.key!! to it.child("label").getValue(String::class.java).orEmpty() }
-        )
+            }
+        }.flatMapLatest { members ->
+            val lives = members.filter { it.role == Role.CHILD }.map { m -> ref.child("children/${m.uid}/live").values { m.uid to childLive(it) } }
+            val live = if (lives.isEmpty()) flowOf(emptyMap()) else combine(lives) { it.toMap() }
+            combine(live, apps) { l, a -> FamilySnapshot(members, l, a) }
+        }
     }
+
+    private fun childLive(l: DataSnapshot) = ChildLive(
+        live = if (l.exists()) {
+            Live(
+                pkg = l.child("pkg").getValue(String::class.java),
+                label = l.child("label").getValue(String::class.java),
+                since = l.child("since").getValue(Long::class.java),
+                title = l.child("title").getValue(String::class.java),
+                url = l.child("url").getValue(String::class.java),
+                screenOn = l.child("screenOn").getValue(Boolean::class.java) ?: false,
+                pip = l.child("pip/pkg").getValue(String::class.java)?.let { pkg ->
+                    // since 가 없으면 경과 시간을 계산할 수 없으므로 PiP 를 보여주지 않는다.
+                    l.child("pip/since").getValue(Long::class.java)?.let { LivePip(pkg, l.child("pip/label").getValue(String::class.java), it) }
+                }
+            )
+        } else {
+            null
+        },
+        updatedAt = l.child("updatedAt").getValue(Long::class.java),
+        usageGranted = l.child("perms/usage").getValue(Boolean::class.java) ?: true,
+        detailsGranted = l.child("perms/a11y").getValue(Boolean::class.java) != false && l.child("perms/notif").getValue(Boolean::class.java) != false
+    )
 
     data class Usage(val daily: Map<java.time.LocalDate, Map<String, Long>>, val totals: Map<java.time.LocalDate, Long>, val shorts: Map<java.time.LocalDate, Long> = emptyMap())
 
-    /** FR#16: 자녀의 일별 앱 사용 초와 하루 총합. 형식이 맞지 않는 날짜 키는 건너뛴다. */
-    fun usage(fid: String, uid: String): Flow<Usage> = db.getReference("families/$fid/children/$uid").values { s ->
+    /** FR#16: 자녀의 일별 앱 사용 초와 하루 총합. 형식이 맞지 않는 날짜 키는 건너뛴다. timeline 은 받지 않도록 노드별로 구독한다 (D#7). */
+    fun usage(fid: String, uid: String): Flow<Usage> {
+        val ref = db.getReference("families/$fid/children/$uid")
         fun date(k: String?) = k?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
-        Usage(
-            daily = s.child("daily").children.mapNotNull { d -> date(d.key)?.let { it to d.children.associate { a -> a.key!! to (a.getValue(Long::class.java) ?: 0L) } } }.toMap(),
-            totals = s.child("dailyTotal").children.mapNotNull { d -> date(d.key)?.let { it to (d.getValue(Long::class.java) ?: 0L) } }.toMap(),
-            shorts = s.child("dailyShorts").children.mapNotNull { d -> date(d.key)?.let { it to (d.getValue(Long::class.java) ?: 0L) } }.toMap()
-        )
+        fun perDay(node: String) = ref.child(node).values { s -> s.children.mapNotNull { d -> date(d.key)?.let { it to (d.getValue(Long::class.java) ?: 0L) } }.toMap() }
+        val daily = ref.child("daily").values { s -> s.children.mapNotNull { d -> date(d.key)?.let { it to d.children.associate { a -> a.key!! to (a.getValue(Long::class.java) ?: 0L) } } }.toMap() }
+        return combine(daily, perDay("dailyTotal"), perDay("dailyShorts")) { d, t, sh -> Usage(d, t, sh) }
+    }
+
+    /** FR#17: 고른 하루치 세션만 구독한다. 필수 값이 없는 항목은 건너뛴다. */
+    fun timeline(fid: String, uid: String, date: java.time.LocalDate): Flow<List<Session>> = db.getReference("families/$fid/children/$uid/timeline/$date").values { s ->
+        s.children.mapNotNull { e ->
+            Session(
+                pkg = e.child("pkg").getValue(String::class.java) ?: return@mapNotNull null,
+                start = e.child("start").getValue(Long::class.java) ?: return@mapNotNull null,
+                end = e.child("end").getValue(Long::class.java) ?: return@mapNotNull null,
+                title = e.child("title").getValue(String::class.java),
+                url = e.child("url").getValue(String::class.java)
+            )
+        }
     }
 
     /** FR#6: 멤버와 자녀 데이터를 한 번에 지운다. */
