@@ -51,7 +51,7 @@
     <string name="allow">Allow</string>
     <string name="start_monitoring">Start protection</string>
     <string name="status_title">Protected</string>
-    <string name="status_body">Keeping this device safe together with your family.\nIf you have questions, ask your guardian.</string>
+    <string name="status_body">Keeping this device safe.\nIf you have questions, ask your guardian.</string>
     <string name="perms_missing">A required permission is off, so protection has paused.</string>
     <string name="fix_permissions">Allow again</string>
     <string name="unit_sec">s</string>
