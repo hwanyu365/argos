@@ -48,7 +48,7 @@ private fun rememberPermissions(): Permissions {
     return perms
 }
 
-/** FR#7: 필수 권한을 순서대로 안내한다. 선택 권한(접근성·알림 접근)은 해당 기능이 생기는 UC3 에서 추가한다. */
+/** FR#7: 필수 권한을 먼저, 선택 권한(알림 표시·접근성·알림 접근)을 그 아래에 안내한다. */
 @Composable
 internal fun ChildPermissions(onStart: () -> Unit, onReset: () -> Unit) {
     val perms = rememberPermissions()
@@ -58,10 +58,12 @@ internal fun ChildPermissions(onStart: () -> Unit, onReset: () -> Unit) {
         Text(stringResource(R.string.permissions_title), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.permissions_body), style = MaterialTheme.typography.bodyMedium)
         Permission.entries.filter { it.required }.forEach { PermissionRow(it, perms.granted(it)) }
-        // FR#7 선택 권한: 없어도 시작할 수 있지만 영상 제목·주소가 모이지 않는다.
+        // FR#7 선택 권한: 없어도 보호는 시작된다.
         Text(stringResource(R.string.optional_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        PermissionRow(Permission.POST_NOTIFICATIONS, perms.granted(Permission.POST_NOTIFICATIONS))
+        // '제한된 설정 허용'이 먼저 필요한 것은 접근성·알림 접근뿐이라 그 두 항목 바로 위에 안내한다.
         Text(stringResource(R.string.restricted_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Permission.entries.filterNot { it.required }.forEach { PermissionRow(it, perms.granted(it)) }
+        Permission.entries.filterNot { it.required || it == Permission.POST_NOTIFICATIONS }.forEach { PermissionRow(it, perms.granted(it)) }
         Button(onClick = onStart, enabled = perms.canStart, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text(stringResource(R.string.start_monitoring)) }
         TextButton(onClick = { resetting = true }) { Text(stringResource(R.string.reset)) }
     }

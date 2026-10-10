@@ -19,9 +19,15 @@ class MonitorPolicyTest {
     fun `TC#11 필수 권한이 하나라도 없으면 시작할 수 없다`() {
         listOf(
             allRequired.copy(usage = false),
-            allRequired.copy(postNotifications = false),
             allRequired.copy(batteryExempt = false)
         ).forEach { assertFalse(it.toString(), it.canStart) }
+    }
+
+    @Test
+    fun `TC#11 알림 표시가 꺼져도 시작할 수 있다 (자녀가 알림을 끈 경우)`() {
+        val noPost = allRequired.copy(postNotifications = false)
+        assertTrue(noPost.canStart)
+        assertEquals(Permission.POST_NOTIFICATIONS, noPost.missing.first())
     }
 
     @Test

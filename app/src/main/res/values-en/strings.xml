@@ -40,7 +40,7 @@
     <string name="reset">Reset</string>
     <string name="reset_confirm">Clears this device\'s role and family link and returns to the start screen.</string>
     <string name="permissions_title">Required permissions</string>
-    <string name="permissions_body">Allow all of these to start protection.</string>
+    <string name="permissions_body">Allow the required permissions to start protection.</string>
     <string name="perm_usage">Usage access</string>
     <string name="perm_usage_desc">Shows which app is in use</string>
     <string name="perm_post">Notifications</string>
@@ -71,7 +71,7 @@
     <string name="chart_hint">Tap a bar to see apps used that day</string>
     <string name="chart_desc">Daily usage bar chart, %1$d bars, highest day %2$s</string>
     <string name="liveness_limited">Limited</string>
-    <string name="optional_title">Optional: video titles and web addresses</string>
+    <string name="optional_title">Optional</string>
     <string name="restricted_hint">On Android 13+, first turn on Settings &gt; Apps &gt; Argos &gt; ⋮ &gt; \'Allow restricted settings\'.</string>
     <string name="perm_a11y">Accessibility (web address, Shorts title)</string>
     <string name="perm_a11y_desc">Reads only the address in Chrome and Samsung Internet and YouTube Shorts titles</string>
