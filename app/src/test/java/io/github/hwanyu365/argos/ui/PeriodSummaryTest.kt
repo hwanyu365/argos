@@ -20,10 +20,19 @@ class PeriodSummaryTest {
         assertEquals(listOf("com.google.android.youtube" to 3_600L, "com.kakao.talk" to 300L), s.apps)
         assertEquals(3_700L, s.totalSec)
         assertEquals(100L, s.shortsSec)
+        assertEquals(d(9), s.selected)
     }
 
     @Test
-    fun `TC#57 기간 밖 날짜는 고르지 않은 것으로 본다`() {
+    fun `TC#57 같은 날을 다시 고르면 선택을 풀고, 다른 날이면 그날로 바꾼다`() {
+        assertEquals(d(9), PeriodSummary.toggle(null, d(9)))
+        assertEquals(null, PeriodSummary.toggle(d(9), d(9)))
+        assertEquals(d(8), PeriodSummary.toggle(d(9), d(8)))
+    }
+
+    @Test
+    fun `TC#57 기간 밖 날짜(화면을 켠 채 자정을 넘김)는 고르지 않은 것으로 본다`() {
+        assertEquals(null, PeriodSummary.of(daily, totals, today = d(10), days = 7, selected = d(1)).selected)
         assertEquals(PeriodSummary.of(daily, totals, today = d(10), days = 7), PeriodSummary.of(daily, totals, today = d(10), days = 7, selected = d(1)))
     }
 

@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +45,9 @@ import java.time.LocalDate
 /** FR#16: 기간별 앱 사용 합계와 일별 총 사용 시간. [days] 가 1 이면 막대 자리에 [live] 를 보여주는 실시간 탭이다 (GH-43). */
 @Composable
 internal fun PeriodTab(usage: FamilyRepository.Usage?, failed: Boolean, days: Int, apps: Map<String, String>, live: (@Composable () -> Unit)? = null) {
-    var selected by remember(days) { mutableStateOf<LocalDate?>(null) }
-    val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days, it.shorts, selected) }
+    var picked by remember(days) { mutableStateOf<LocalDate?>(null) }
+    val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days, it.shorts, picked) }
+    val selected = summary?.selected
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (summary != null && !failed) {
@@ -54,7 +56,7 @@ internal fun PeriodTab(usage: FamilyRepository.Usage?, failed: Boolean, days: In
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val label = selected?.let { stringResource(R.string.period_day_total, it.monthValue, it.dayOfMonth) } ?: stringResource(if (days == 1) R.string.today_total else R.string.period_total)
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                    if (selected != null) TextButton(onClick = { selected = null }) { Text(stringResource(R.string.period_all)) }
+                    if (selected != null) TextButton(onClick = { picked = null }) { Text(stringResource(R.string.period_all)) }
                 }
                 Text(hours(summary.totalSec), style = MaterialTheme.typography.headlineLarge)
             }
@@ -63,7 +65,7 @@ internal fun PeriodTab(usage: FamilyRepository.Usage?, failed: Boolean, days: In
             live()
         } else if (summary != null && !failed && (selected != null || !summary.isEmpty)) {
             // 고른 날이 비어 있어도 막대를 남겨야 다른 날을 고르거나 되돌릴 수 있다.
-            DailyBars(summary.bars, selected) { day -> selected = day.takeIf { it != selected } }
+            DailyBars(summary.bars, selected) { picked = PeriodSummary.toggle(summary.selected, it) }
         }
         when {
             failed -> Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
@@ -81,6 +83,8 @@ private fun hours(sec: Long) = formatDuration(sec * 1000, stringResource(R.strin
 @Composable
 private fun DailyBars(bars: List<Pair<LocalDate, Long>>, day: LocalDate?, onSelect: (LocalDate) -> Unit) {
     val selected = bars.indexOfFirst { it.first == day }.takeIf { it >= 0 }
+    // 제스처 감지는 bars 가 같으면 재시작하지 않으므로, 처음 람다가 아닌 최신 선택 상태로 토글하게 한다.
+    val select by rememberUpdatedState(onSelect)
     val color = MaterialTheme.colorScheme.primary
     val axis = MaterialTheme.colorScheme.outlineVariant
     val max = bars.maxOf { it.second }.coerceAtLeast(1)
@@ -95,7 +99,7 @@ private fun DailyBars(bars: List<Pair<LocalDate, Long>>, day: LocalDate?, onSele
         Canvas(
             Modifier.fillMaxWidth().height(140.dp)
                 .semantics { contentDescription = desc }
-                .pointerInput(bars) { detectTapGestures { o -> onSelect(bars[(o.x / (size.width / bars.size)).toInt().coerceIn(0, bars.size - 1)].first) } }
+                .pointerInput(bars) { detectTapGestures { o -> select(bars[(o.x / (size.width / bars.size)).toInt().coerceIn(0, bars.size - 1)].first) } }
         ) {
             val slot = size.width / bars.size
             val gap = 2.dp.toPx()
