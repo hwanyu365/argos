@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,7 +54,8 @@ internal fun PeriodTab(usage: FamilyRepository.Usage?, failed: Boolean, days: In
         if (summary != null && !failed) {
             // 기간(또는 고른 날) 총합이 이 탭의 핵심 숫자다.
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // '전체 기간' 버튼이 생길 때 줄 높이가 바뀌어 막대가 밀리지 않도록 버튼 높이를 미리 잡아 둔다.
+                Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                     val label = selected?.let { stringResource(R.string.period_day_total, it.monthValue, it.dayOfMonth) } ?: stringResource(if (days == 1) R.string.today_total else R.string.period_total)
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     if (selected != null) TextButton(onClick = { picked = null }) { Text(stringResource(R.string.period_all)) }
