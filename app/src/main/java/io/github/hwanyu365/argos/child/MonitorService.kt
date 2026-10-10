@@ -159,7 +159,8 @@ class MonitorService : Service() {
             update["children/$uid/daily/$d"] = day?.apps?.mapKeys { PkgKey.encode(it.key) }?.mapValues { it.value.coerceAtMost(MAX_DAY_SEC) }?.takeIf { it.isNotEmpty() }
             update["children/$uid/dailyTotal/$d"] = day?.totalSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
             update["children/$uid/dailyShorts/$d"] = day?.shortsSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
-            update["children/$uid/timeline/$d"] = timeline[d]?.associate { DailyAggregator.timelineKey(it) to timelineItem(it) }?.takeIf { it.isNotEmpty() }
+            // 키에 패키지명이 들어가 잘라 쓸 수 없으므로, R#8 키 상한을 넘는 패키지는 빼서 같은 업로드의 일별 값까지 거부되지 않게 한다.
+            update["children/$uid/timeline/$d"] = timeline[d]?.filter { it.pkg.length <= 255 }?.associate { DailyAggregator.timelineKey(it) to timelineItem(it) }?.takeIf { it.isNotEmpty() }
         }
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 집계에 나온 앱의 이름을 공유한다 (R#6).
         val newLabels = agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }
@@ -178,7 +179,7 @@ class MonitorService : Service() {
 
     // R#8 길이 상한을 넘으면 그날 타임라인 전체가 거부되므로 미리 자른다. 없는 값은 키를 빼야 규칙의 문자열 검사를 통과한다.
     private fun timelineItem(s: Session): Map<String, Any> = listOfNotNull(
-        "pkg" to s.pkg.take(255),
+        "pkg" to s.pkg,
         "start" to s.start,
         "end" to s.end,
         s.title?.let { "title" to it.take(300) },
