@@ -24,6 +24,7 @@ class DetailLinkTest {
         assertNull(DetailLink.of(chrome, null, "javascript:alert(1)"))
         assertNull(DetailLink.of(chrome, null, "a b.com"))
         assertNull(DetailLink.of(chrome, null, "/path/only"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/‮moc.elgoog"))
         assertNull(DetailLink.of(chrome, "제목", null))
     }
 

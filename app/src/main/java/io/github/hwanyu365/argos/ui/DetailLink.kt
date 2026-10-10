@@ -30,7 +30,8 @@ object DetailLink {
 
     // 자녀 기기는 변조될 수 있으므로 http(s) 웹 주소만 연다. 가린 토큰이 있는 주소는 열어도 깨진 페이지다.
     private fun web(url: String): String? {
-        if ('…' in url) return null
+        // 방향·제어 문자가 섞인 주소는 확인 창에서 다르게 보일 수 있으므로 열지 않는다.
+        if ('…' in url || HIDDEN.containsMatchIn(url)) return null
         val full = if (SCHEME.containsMatchIn(url)) url else "https://$url"
         val uri = runCatching { URI(full) }.getOrNull() ?: return null
         return full.takeIf { uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty() }
