@@ -14,6 +14,20 @@ class PeriodSummaryTest {
     private val totals = mapOf(d(8) to 600L, d(9) to 3_700L, d(10) to 1_200L)
 
     @Test
+    fun `TC#57 날짜를 고르면 막대는 기간 전체로 두고 총합·앱별·Shorts 는 그날 값만 센다`() {
+        val s = PeriodSummary.of(daily, totals, today = d(10), days = 7, shorts = mapOf(d(9) to 100L, d(10) to 50L), selected = d(9))
+        assertEquals(7, s.bars.size)
+        assertEquals(listOf("com.google.android.youtube" to 3_600L, "com.kakao.talk" to 300L), s.apps)
+        assertEquals(3_700L, s.totalSec)
+        assertEquals(100L, s.shortsSec)
+    }
+
+    @Test
+    fun `TC#57 기간 밖 날짜는 고르지 않은 것으로 본다`() {
+        assertEquals(PeriodSummary.of(daily, totals, today = d(10), days = 7), PeriodSummary.of(daily, totals, today = d(10), days = 7, selected = d(1)))
+    }
+
+    @Test
     fun `TC#31 기간의 앱별 합계를 많은 순으로 보여주고 앱 키를 패키지명으로 되돌린다`() {
         val s = PeriodSummary.of(daily, totals, today = d(10), days = 7)
         assertEquals(listOf("com.google.android.youtube" to 4_800L, "com.kakao.talk" to 900L), s.apps)

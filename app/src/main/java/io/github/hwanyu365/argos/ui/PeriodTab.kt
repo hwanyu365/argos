@@ -14,17 +14,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -36,7 +33,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.hwanyu365.argos.R
@@ -44,40 +40,36 @@ import io.github.hwanyu365.argos.child.DetailExtractor
 import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.PkgKey
 import java.time.LocalDate
-import kotlinx.coroutines.flow.catch
 
-private val PERIODS = listOf(1 to R.string.period_today, 7 to R.string.period_7, 30 to R.string.period_30)
-
-/** FR#16: 기간별 앱 사용 합계와 일별 총 사용 시간. 기본은 30일이다. */
+/** FR#16: 기간별 앱 사용 합계와 일별 총 사용 시간. [days] 가 1 이면 막대 자리에 [live] 를 보여주는 실시간 탭이다 (GH-43). */
 @Composable
-internal fun PeriodTab(repo: FamilyRepository, fid: String, uid: String, apps: Map<String, String>) {
-    // 구독 오류를 빈 기록으로 바꾸면 '사용하지 않음'으로 오해되므로 따로 표시한다.
-    var failed by remember(fid, uid) { mutableStateOf(false) }
-    val usage by remember(fid, uid) { repo.usage(fid, uid).catch { failed = true } }.collectAsState(null)
-    var days by remember { mutableIntStateOf(30) }
-    val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days, it.shorts) }
+internal fun PeriodTab(usage: FamilyRepository.Usage?, failed: Boolean, days: Int, apps: Map<String, String>, live: (@Composable () -> Unit)? = null) {
+    var selected by remember(days) { mutableStateOf<LocalDate?>(null) }
+    val summary = usage?.let { PeriodSummary.of(it.daily, it.totals, LocalDate.now(), days, it.shorts, selected) }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            PERIODS.forEachIndexed { i, (d, label) ->
-                SegmentedButton(selected = days == d, onClick = { days = d }, shape = SegmentedButtonDefaults.itemShape(i, PERIODS.size), icon = {}) {
-                    Text(stringResource(label), maxLines = 1, fontWeight = if (days == d) FontWeight.Bold else FontWeight.Normal)
+        if (summary != null && !failed) {
+            // 기간(또는 고른 날) 총합이 이 탭의 핵심 숫자다.
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val label = selected?.let { stringResource(R.string.period_day_total, it.monthValue, it.dayOfMonth) } ?: stringResource(if (days == 1) R.string.today_total else R.string.period_total)
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    if (selected != null) TextButton(onClick = { selected = null }) { Text(stringResource(R.string.period_all)) }
                 }
+                Text(hours(summary.totalSec), style = MaterialTheme.typography.headlineLarge)
             }
+        }
+        if (live != null) {
+            live()
+        } else if (summary != null && !failed && (selected != null || !summary.isEmpty)) {
+            // 고른 날이 비어 있어도 막대를 남겨야 다른 날을 고르거나 되돌릴 수 있다.
+            DailyBars(summary.bars, selected) { day -> selected = day.takeIf { it != selected } }
         }
         when {
             failed -> Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
             summary == null -> Text("…")
             summary.isEmpty -> Text(stringResource(R.string.period_empty), style = MaterialTheme.typography.bodyLarge)
-            else -> {
-                // 기간 총합이 이 탭의 핵심 숫자다.
-                Column {
-                    Text(stringResource(R.string.period_total), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(hours(summary.totalSec), style = MaterialTheme.typography.headlineLarge)
-                }
-                if (days > 1) DailyBars(summary.bars)
-                AppList(summary.apps, apps, summary.shortsSec)
-            }
+            else -> AppList(summary.apps, apps, summary.shortsSec)
         }
     }
 }
@@ -87,24 +79,23 @@ private fun hours(sec: Long) = formatDuration(sec * 1000, stringResource(R.strin
 
 /** 단일 계열 막대: 한 가지 색, 범례 없음, 끝은 둥글게, 막대 사이 간격. 누르면 그날 값을 보여준다. */
 @Composable
-private fun DailyBars(bars: List<Pair<LocalDate, Long>>) {
-    var selected by remember(bars) { mutableStateOf<Int?>(null) }
+private fun DailyBars(bars: List<Pair<LocalDate, Long>>, day: LocalDate?, onSelect: (LocalDate) -> Unit) {
+    val selected = bars.indexOfFirst { it.first == day }.takeIf { it >= 0 }
     val color = MaterialTheme.colorScheme.primary
     val axis = MaterialTheme.colorScheme.outlineVariant
     val max = bars.maxOf { it.second }.coerceAtLeast(1)
-    val sel = selected?.let { bars.getOrNull(it) }
     val desc = stringResource(R.string.chart_desc, bars.size, hours(max))
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            sel?.let { "${it.first.monthValue}/${it.first.dayOfMonth}  ${hours(it.second)}" } ?: stringResource(R.string.chart_hint),
+            stringResource(if (selected == null) R.string.chart_hint else R.string.chart_hint_selected),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Canvas(
             Modifier.fillMaxWidth().height(140.dp)
                 .semantics { contentDescription = desc }
-                .pointerInput(bars) { detectTapGestures { o -> selected = (o.x / (size.width / bars.size)).toInt().coerceIn(0, bars.size - 1) } }
+                .pointerInput(bars) { detectTapGestures { o -> onSelect(bars[(o.x / (size.width / bars.size)).toInt().coerceIn(0, bars.size - 1)].first) } }
         ) {
             val slot = size.width / bars.size
             val gap = 2.dp.toPx()

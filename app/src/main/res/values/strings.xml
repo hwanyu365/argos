@@ -65,13 +65,11 @@
     <string name="last_seen">마지막: %1$s</string>
     <string name="pip_line">PiP: %1$s %2$s째</string>
     <string name="tab_live">실시간</string>
-    <string name="tab_period">기간</string>
-    <string name="period_today">오늘</string>
     <string name="period_7">7일</string>
     <string name="period_30">30일</string>
     <string name="period_total">총 사용 시간</string>
     <string name="period_empty">이 기간에는 기록이 없어요</string>
-    <string name="chart_hint">막대를 누르면 그날 사용 시간이 보여요</string>
+    <string name="chart_hint">막대를 누르면 그날 앱별 사용 시간이 보여요</string>
     <string name="chart_desc">일별 사용 시간 막대 %1$d개, 가장 많은 날 %2$s</string>
     <string name="liveness_limited">상세 제한</string>
     <string name="optional_title">선택: 영상 제목·웹 주소</string>
@@ -82,4 +80,9 @@
     <string name="perm_notif_desc">재생 중인 영상의 제목을 확인해요. 알림 내용은 읽지 않아요</string>
     <string name="a11y_description">Chrome·삼성 인터넷의 주소창과 YouTube Shorts 제목만 읽어 보호자에게 보여줍니다. 다른 앱의 화면은 읽지 않습니다.</string>
     <string name="shorts_within">이 중 Shorts %1$s</string>
+    <string name="today_total">오늘 사용 시간</string>
+    <string name="period_day_total">%1$d/%2$d 사용 시간</string>
+    <string name="period_all">전체 기간</string>
+    <string name="chart_hint_selected">같은 막대를 다시 누르면 전체 기간으로 돌아가요</string>
+    <string name="more_options">더보기</string>
 </resources>

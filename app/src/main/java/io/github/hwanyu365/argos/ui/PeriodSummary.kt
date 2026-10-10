@@ -9,16 +9,18 @@ data class PeriodSummary(val apps: List<Pair<String, Long>>, val bars: List<Pair
     val isEmpty get() = totalSec == 0L && apps.isEmpty()
 
     companion object {
-        fun of(daily: Map<LocalDate, Map<String, Long>>, totals: Map<LocalDate, Long>, today: LocalDate, days: Int, shorts: Map<LocalDate, Long> = emptyMap()): PeriodSummary {
+        /** [selected] 가 기간 안의 날짜면 막대는 기간 전체로 두고 나머지 값은 그날만 센다 (GH-43). */
+        fun of(daily: Map<LocalDate, Map<String, Long>>, totals: Map<LocalDate, Long>, today: LocalDate, days: Int, shorts: Map<LocalDate, Long> = emptyMap(), selected: LocalDate? = null): PeriodSummary {
             val range = (days - 1 downTo 0).map { today.minusDays(it.toLong()) }
-            val apps = range.flatMap { daily[it].orEmpty().entries }
+            val bars = range.map { it to (totals[it] ?: 0L) }
+            val focus = selected?.takeIf { it in range }?.let { listOf(it) } ?: range
+            val apps = focus.flatMap { daily[it].orEmpty().entries }
                 .groupBy({ PkgKey.decode(it.key) }, { it.value })
                 .mapValues { it.value.sum() }
                 .toList()
                 .sortedByDescending { it.second }
-            val bars = range.map { it to (totals[it] ?: 0L) }
             // 앱별 합계를 더하면 PiP 겹침이 두 번 들어가므로, 총합은 하루 총합(A#4)을 더한다.
-            return PeriodSummary(apps, bars, bars.sumOf { it.second }, range.sumOf { shorts[it] ?: 0L })
+            return PeriodSummary(apps, bars, focus.sumOf { totals[it] ?: 0L }, focus.sumOf { shorts[it] ?: 0L })
         }
     }
 }
