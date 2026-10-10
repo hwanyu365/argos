@@ -78,9 +78,13 @@ npm --prefix firebase test # 보안 규칙 (Firebase Emulator)
 
 ### agent 자동화 흐름
 
-이 프로젝트는 agent 자동화 개발이다. 저장소 소유자 지시(#20)로 전역 규칙("커밋·PR 은 지시할 때만")을 대체한다.
+이 프로젝트는 agent 자동화 개발이다. 저장소 소유자 지시(#20, #57)로 전역 규칙 중 아래를 대체한다.
 
-- 하위 이슈가 끝나면 묻지 않고 커밋 → draft PR → CI·Claude 리뷰 반영 → ready → merge
+- "커밋·PR 은 지시할 때만"
+- "PR 피드백 처리는 조사 → 보고 → 지시 → 진행" → 리뷰는 조사 후 사실인 지적만 반영하고, 반영하지 않은 항목은 근거를 PR 에 남긴다
+- "리뷰 반영은 기존 커밋에 amend" → 새 커밋으로 올리고 squash merge 로 하나가 된다
+
+- 하위 이슈가 끝나면 묻지 않고 커밋 → draft PR → CI·Claude 리뷰 반영 → ready → squash merge
 - 보고는 상위 이슈(UC) 단위로 한다
 - 먼저 묻는 예외
   - 스펙에 없는 결정
