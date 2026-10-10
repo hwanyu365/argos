@@ -84,4 +84,5 @@
     <string name="period_all">Whole period</string>
     <string name="chart_hint_selected">Tap the same bar again for the whole period</string>
     <string name="more_options">More options</string>
+    <string name="today_empty">No records yet today</string>
 </resources>

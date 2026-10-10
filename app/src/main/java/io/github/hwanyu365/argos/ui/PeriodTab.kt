@@ -70,7 +70,7 @@ internal fun PeriodTab(usage: FamilyRepository.Usage?, failed: Boolean, days: In
         when {
             failed -> Text(stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
             summary == null -> Text("…")
-            summary.isEmpty -> Text(stringResource(R.string.period_empty), style = MaterialTheme.typography.bodyLarge)
+            summary.isEmpty -> Text(stringResource(if (days == 1) R.string.today_empty else R.string.period_empty), style = MaterialTheme.typography.bodyLarge)
             else -> AppList(summary.apps, apps, summary.shortsSec)
         }
     }
