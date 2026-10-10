@@ -68,7 +68,6 @@ import io.github.hwanyu365.argos.data.FamilyRepository
 import io.github.hwanyu365.argos.data.FamilySnapshot
 import io.github.hwanyu365.argos.data.Member
 import io.github.hwanyu365.argos.data.Role
-import java.net.URLDecoder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -388,8 +387,7 @@ private fun LinkDialog(link: String, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.link_confirm_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // 검색어가 %XX 로 인코딩돼 읽을 수 없으므로 보여줄 때만 푼다. 여는 주소는 그대로다.
-                Text(runCatching { URLDecoder.decode(link, "UTF-8") }.getOrDefault(link), style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(DetailLink.display(link), style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
                 Text(stringResource(R.string.link_confirm_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },

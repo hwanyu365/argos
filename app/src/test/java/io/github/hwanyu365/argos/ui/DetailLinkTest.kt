@@ -34,4 +34,17 @@ class DetailLinkTest {
         assertNull(DetailLink.of(yt, "Shorts", null))
         assertNull(DetailLink.of(yt, null, null))
     }
+
+    @Test
+    fun `TC#59 확인 창은 우리가 만든 검색어만 풀어 보여주고 제어·방향 문자는 뺀다`() {
+        assertEquals("https://www.youtube.com/results?search_query=고양이 영상", DetailLink.display("https://www.youtube.com/results?search_query=%EA%B3%A0%EC%96%91%EC%9D%B4+%EC%98%81%EC%83%81"))
+        assertEquals("https://www.youtube.com/results?search_query=ab", DetailLink.display("https://www.youtube.com/results?search_query=a%0A%E2%80%AEb"))
+        // 자녀가 올린 주소는 풀지 않는다 → 줄바꿈·경로 구분자로 확인 창을 속일 수 없다.
+        assertEquals("https://evil.com/%0Aok%2Fgoogle.com", DetailLink.display("https://evil.com/%0Aok%2Fgoogle.com"))
+    }
+
+    @Test
+    fun `TC#59 대문자 스킴도 웹 주소로 본다`() {
+        assertEquals("HTTPS://example.com", DetailLink.of(chrome, null, "HTTPS://example.com"))
+    }
 }
