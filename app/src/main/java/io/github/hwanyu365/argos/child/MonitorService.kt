@@ -234,7 +234,7 @@ class MonitorService : Service() {
         return Notification.Builder(this, CHANNEL)
             .setContentTitle(getString(R.string.monitor_title))
             .setContentText(getString(R.string.monitor_text))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(open)
             .setOngoing(true)
             .build()
