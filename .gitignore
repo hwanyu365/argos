@@ -23,3 +23,6 @@ node_modules/
 # 로컬 도구 상태
 .omc/
 .claude/settings.local.json
+
+# 아이콘 생성 미리보기
+tools/icon/preview.svg
