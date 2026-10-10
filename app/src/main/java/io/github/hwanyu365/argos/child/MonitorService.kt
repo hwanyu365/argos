@@ -147,8 +147,10 @@ class MonitorService : Service() {
         val earliest = store.earliestStart()?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
         val days = DailyAggregator.uploadDays(prefs.dailyUploaded, earliest, today)
         val from = days.first().atStartOfDay(zone).toInstant().toEpochMilli()
-        val open = listOfNotNull(builder.current, builder.pip?.open).map { Session(it.pkg, it.start, now) }
-        val agg = DailyAggregator.aggregate(store.endingAfter(from) + open, zone)
+        val open = listOfNotNull(builder.current, builder.pip?.open).map { Session(it.pkg, it.start, now, it.detail.title, it.detail.url) }
+        val sessions = store.endingAfter(from) + open
+        val agg = DailyAggregator.aggregate(sessions, zone)
+        val timeline = DailyAggregator.timeline(sessions, zone)
         val update = mutableMapOf<String, Any?>()
         days.forEach { d ->
             val day = agg[d]
@@ -157,6 +159,7 @@ class MonitorService : Service() {
             update["children/$uid/daily/$d"] = day?.apps?.mapKeys { PkgKey.encode(it.key) }?.mapValues { it.value.coerceAtMost(MAX_DAY_SEC) }?.takeIf { it.isNotEmpty() }
             update["children/$uid/dailyTotal/$d"] = day?.totalSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
             update["children/$uid/dailyShorts/$d"] = day?.shortsSec?.coerceAtMost(MAX_DAY_SEC)?.takeIf { it > 0 }
+            update["children/$uid/timeline/$d"] = timeline[d]?.associate { DailyAggregator.timelineKey(it) to timelineItem(it) }?.takeIf { it.isNotEmpty() }
         }
         // 부모 기기에 없는 앱도 이름을 보여주기 위해 집계에 나온 앱의 이름을 공유한다 (R#6).
         val newLabels = agg.values.flatMap { it.apps.keys }.distinct().filter { labeledApps.add(it) }
@@ -173,9 +176,18 @@ class MonitorService : Service() {
         if (cutoff != lastPruneCutoff) pruneRemote(family.child("children/$uid"), cutoff)
     }
 
+    // R#8 길이 상한을 넘으면 그날 타임라인 전체가 거부되므로 미리 자른다. 없는 값은 키를 빼야 규칙의 문자열 검사를 통과한다.
+    private fun timelineItem(s: Session): Map<String, Any> = listOfNotNull(
+        "pkg" to s.pkg.take(255),
+        "start" to s.start,
+        "end" to s.end,
+        s.title?.let { "title" to it.take(300) },
+        s.url?.let { "url" to it.take(2048) }
+    ).toMap()
+
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
     private fun pruneRemote(child: DatabaseReference, cutoff: LocalDate) {
-        listOf("daily", "dailyTotal", "dailyShorts").forEach { node ->
+        listOf("daily", "dailyTotal", "dailyShorts", "timeline").forEach { node ->
             child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap ->
                 val old = snap.children.mapNotNull { it.key }.associate { "$node/$it" to null }
                 // 성공했을 때만 기준일을 기록해, 실패하면 다음 업로드 때 다시 정리한다.

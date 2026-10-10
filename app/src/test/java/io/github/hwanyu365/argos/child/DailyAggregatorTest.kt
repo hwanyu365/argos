@@ -59,6 +59,26 @@ class DailyAggregatorTest {
     }
 
     @Test
+    fun `TC#56 타임라인은 날짜별로 시작 순서대로 나누고 자정을 넘는 세션은 잘라 담는다`() {
+        val days = DailyAggregator.timeline(
+            listOf(
+                Session("b", t(10, 9, 0), t(10, 9, 5), title = "영상"),
+                Session("a", t(9, 23, 50), t(10, 0, 10), url = "x.com")
+            ),
+            kst
+        )
+        assertEquals(listOf(Session("a", t(9, 23, 50), t(10, 0, 0), url = "x.com")), days[day(9)])
+        assertEquals(listOf(Session("a", t(10, 0, 0), t(10, 0, 10), url = "x.com"), Session("b", t(10, 9, 0), t(10, 9, 5), title = "영상")), days[day(10)])
+    }
+
+    @Test
+    fun `TC#56 타임라인 항목 키는 시작 시각과 앱으로 만들고 규칙 형식에 맞는다`() {
+        val key = DailyAggregator.timelineKey(Session("com.google.android.youtube", 1_791_565_016_343, 1_791_565_020_000))
+        assertEquals("1791565016343_com,google,android,youtube", key)
+        assert(Regex("^[0-9]{1,15}_[A-Za-z0-9_,]{1,255}$").matches(key))
+    }
+
+    @Test
     fun `TC#26 업로드는 마지막으로 올린 날부터 오늘까지 다시 올린다 (실패분 재전송)`() {
         assertEquals(listOf(day(8), day(9), day(10)), DailyAggregator.uploadDays(lastUploaded = day(8), earliest = day(1), today = day(10)))
     }

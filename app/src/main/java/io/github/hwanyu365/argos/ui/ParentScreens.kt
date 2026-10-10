@@ -304,7 +304,7 @@ private fun qrBitmap(text: String, size: Int = 512): Bitmap {
     return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
 }
 
-/** 자녀 한 명의 상세: [실시간 | 7일 | 30일] 탭을 좌우로 넘긴다 (GH-43). */
+/** 자녀 한 명의 상세: [실시간 | 7일 | 30일 | 타임라인] 탭을 좌우로 넘긴다 (GH-43, GH-37). */
 @Composable
 internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBack: () -> Unit) {
     val family = rememberFamily(repo, fid)
@@ -312,7 +312,7 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
     val scope = rememberCoroutineScope()
     val member = family.members.firstOrNull { it.uid == uid }
     val c = family.live[uid]
-    // 세 탭이 같은 기록을 쓰므로 구독은 한 번만 한다.
+    // 앞의 세 탭이 같은 기록을 쓰므로 구독은 한 번만 한다.
     // 구독 오류를 빈 기록으로 바꾸면 '사용하지 않음'으로 오해되므로 따로 표시한다.
     var failed by remember(fid, uid) { mutableStateOf(false) }
     val usage by remember(fid, uid) { repo.usage(fid, uid).catch { failed = true } }.collectAsState(null)
@@ -331,6 +331,10 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
         }
         HorizontalPager(pager, Modifier.weight(1f), verticalAlignment = Alignment.Top) { page ->
             val days = DETAIL_TABS[page].first
+            if (days == TIMELINE) {
+                TimelineTab(repo, fid, uid, family.apps)
+                return@HorizontalPager
+            }
             val live: (@Composable () -> Unit)? = if (days > 1) {
                 null
             } else {
@@ -349,4 +353,5 @@ internal fun ChildDetail(repo: FamilyRepository, fid: String, uid: String, onBac
     }
 }
 
-private val DETAIL_TABS = listOf(1 to R.string.tab_live, 7 to R.string.period_7, 30 to R.string.period_30)
+private const val TIMELINE = 0
+private val DETAIL_TABS = listOf(1 to R.string.tab_live, 7 to R.string.period_7, 30 to R.string.period_30, TIMELINE to R.string.tab_timeline)

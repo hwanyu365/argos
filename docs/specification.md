@@ -103,7 +103,7 @@
   - Why: 실측 결과 브라우저의 페이지 제목은 접근성 트리에 노출되지 않음 (GH-1)
 - `FR#12` 현재 상태(live)를 포그라운드 앱·상세가 바뀔 때 즉시, 그 외에는 60초마다 heartbeat 로 업로드한다 [요구사항]
 - `FR#13` 일별 앱 사용 합계(daily)와 세션 목록(timeline)을 15분마다, 그리고 날짜가 바뀔 때 업로드한다. 업로드 실패분은 다음 주기에 재시도한다 [요구사항]
-  - UC2 는 daily·dailyTotal 까지. timeline 은 상세 정보와 함께 UC3 에서 올린다
+  - timeline 은 daily 와 같은 주기·범위(A#3)로 날짜 노드 전체를 덮어쓴다. 진행 중 세션은 지금 시각까지 담는다 (GH-37)
 - `FR#14` 로컬과 원격 데이터 모두 90일이 지나면 삭제한다 [요구사항]
   - 일별 업로드 때 함께 정리한다: 로컬은 90일 전보다 먼저 끝난 세션(매번), 원격은 그보다 앞선 날짜 키(`daily`·`dailyTotal`·`dailyShorts`, 기준일이 바뀔 때)
   - Why: 조회 기본값은 30일이지만 비교·조정 여유를 두되, 무료 저장 한도(1GB) 안에 머물도록 상한을 둠
@@ -120,7 +120,8 @@
   - 직접 선택은 후속 작업이다
   - YouTube 줄 아래에 기간의 Shorts 시간을 "이 중 Shorts n분" 으로 표시한다 (A#5)
 - `FR#17` 자녀 상세의 "타임라인" 탭은 선택한 날짜의 세션을 시간순으로 앱·시작~종료·title/url 과 함께 표시한다 [요구사항]
-  - 탭 [실시간 | 7일 | 30일] 뒤에 붙인다. 구현은 GH-37 (보류) 이며 TC#56 을 그 브랜치에서 쓴다
+  - 탭 [실시간 | 7일 | 30일 | 타임라인]. 날짜는 오늘부터 이전·다음 버튼으로 옮기며 보관 기간(90일) 안으로 제한한다
+  - 고른 하루치 노드만 구독한다 → 부모가 받는 양이 보관 기간과 무관하다
 - `FR#18` 감시 상태를 §6.4 규칙으로 분류해 배지와 마지막 확인 시각을 표시한다 [요구사항]
 
 ### 3.3 비기능 요구사항
@@ -158,7 +159,7 @@ families/{fid}/children/{uid}/live               { pkg?, label?, since?, title?,
 families/{fid}/children/{uid}/daily/{yyyy-MM-dd}/{pkgKey}     seconds (number)
 families/{fid}/children/{uid}/dailyTotal/{yyyy-MM-dd}         seconds (number, 겹치는 구간을 한 번만 센 하루 총합)
 families/{fid}/children/{uid}/dailyShorts/{yyyy-MM-dd}        seconds (number, YouTube 앱에서 Shorts 로 본 시간)
-families/{fid}/children/{uid}/timeline/{yyyy-MM-dd}/{sessionId} { pkg, start, end, title?, url? }
+families/{fid}/children/{uid}/timeline/{yyyy-MM-dd}/{start}_{pkgKey} { pkg, start, end, title?, url? }
 families/{fid}/apps/{pkgKey}                     { label }
 ```
 
@@ -168,6 +169,9 @@ families/{fid}/apps/{pkgKey}                     { label }
   - 한계: 부모 화면의 '오늘'은 부모 기기 날짜라, 시간대가 다르면 기간의 경계 날짜가 하루 어긋날 수 있다
 - `D#4` 초대 코드 = Crockford Base32 10자리(50bit) → 수동 입력이 가능한 길이이면서, 10분 만료 안에서 무작위 대입이 불가능한 크기
 - `D#5` 자녀 멤버의 `uid` 를 `children/{uid}` 키로 그대로 쓴다 → 규칙에서 "자기 노드에만 쓰기"를 `auth.uid` 비교로 표현할 수 있음
+- `D#6` timeline 항목 키 = `{start ms}_{pkgKey}` → 같은 세션은 다시 올려도 같은 키라 덮어쓰기가 멱등이고, 키 순서가 대체로 시작 순서다
+  - 자정을 넘는 세션은 날짜마다 잘라 담는다 (A#1). 다음 날 조각의 start 는 자정이다
+- `D#7` 부모는 가족 노드 전체가 아니라 `members`·`apps`·`children/{uid}/live` 와 필요한 일별·타임라인 노드만 구독한다 → timeline 이 쌓여도 앱을 열 때 받는 양이 늘지 않음 (NFR#1)
 
 ### 4.3 보안 규칙 계약 (`database.rules.json`)
 
@@ -180,7 +184,7 @@ families/{fid}/apps/{pkgKey}                     { label }
   - `joinedAt` 은 서버 시각만 허용, `name` 1~40자
 - `R#3` `children/{uid}` 쓰기·삭제 → `auth.uid == uid` (자녀 본인), 삭제(null) → 같은 가족 부모 멤버
   - 자녀 본인 삭제는 초기화(FR#1) 때 멤버 레코드와 함께 기록을 지우기 위함
-  - 하위 노드는 스펙에 정의된 것만 허용한다 (현재 `live`. `daily`·`timeline` 은 UC2·UC3 에서 추가)
+  - 하위 노드는 스펙에 정의된 것만 허용한다 (`live`·`daily`·`dailyTotal`·`dailyShorts`·`timeline`)
   - `live` 는 `screenOn`·`updatedAt`(서버 시각)·`perms{usage,a11y,notif}` 필수, `pkg` ≤255·`label` ≤100·`title` ≤300·`url` ≤2048자, 그 밖의 필드는 거부
   - `live.pip` 는 `pkg`(≤255)·`since` 필수, `label` ≤100, 그 밖의 필드는 거부
   - Why: 자녀 기기 클라이언트는 변조될 수 있으므로 임의 크기 데이터로 무료 저장 한도(1GB)를 소진하지 못하게 한다. 클라이언트는 상한에 맞춰 잘라서 보낸다
@@ -191,6 +195,8 @@ families/{fid}/apps/{pkgKey}                     { label }
 - `R#5` `members/{uid}` 삭제 → 본인 또는 같은 가족의 부모
 - `R#7` `children/{uid}/daily/{date}/{pkgKey}`, `dailyTotal/{date}`, `dailyShorts/{date}` → 날짜 키 `yyyy-MM-dd`, 앱 키 `[A-Za-z0-9_,]{1,255}`, 값 0~90000 정수(서머타임 전환일 25시간 포함). 날짜 노드는 앱별 값을 가진 객체여야 한다
   - 쓰기 주체는 R#3 과 같다 (자녀 본인, 부모는 삭제만)
+- `R#8` `children/{uid}/timeline/{date}/{key}` → 날짜 키 `yyyy-MM-dd`, 항목 키 `[0-9]{1,15}_[A-Za-z0-9_,]{1,255}` (D#6), `pkg`(≤255)·`start`·`end`(숫자) 필수, `title` ≤300·`url` ≤2048자, 그 밖의 필드는 거부. 날짜 노드는 항목을 가진 객체여야 한다
+  - 쓰기 주체는 R#3 과 같다
 - `R#6` `apps/{pkgKey}` 쓰기 → 같은 가족의 자녀 멤버만. `{ label }` 1~100자만 허용
   - 앱 이름은 가족 안에서 공유되는 표시용 값이라 어느 자녀가 써도 된다. 형식과 크기만 제한한다
 
@@ -364,7 +370,7 @@ stateDiagram-v2
 | TC#29 | D#2 | 서버 오프셋 +30초 / 경과 계산 / 오프셋 보정 값 사용 | |
 | TC#30 | FR#15 | live·daily 스냅샷 / 카드 상태 계산 / 경과 시간·오늘 누적 정확 | |
 | TC#31 | FR#16 | 기간 daily·dailyTotal / 기간 집계 / 앱별 합계 내림차순(패키지명 복원), 기간의 모든 날 막대(없는 날 0), 총합은 하루 총합의 합, 오늘만, 하루 총합 없이 앱 기록만 있어도 비어 있지 않음 | |
-| TC#32 | FR#17 | timeline / 날짜 선택 / 시작 시각 오름차순 | |
+| TC#32 | FR#17 | 하루 timeline / 행 만들기 / 시작 시각 오름차순, 앱 이름(없으면 패키지명), 상세는 제목 우선·없으면 주소, 사용 시간 | |
 | TC#33 | NFR#7 | SCREEN_OFF 이후 / 폴링 스케줄 / 폴링 중지, heartbeat 유지. 화면 켜짐 / 앱 실행 / 5초 안에 진행 중 세션 갱신 (통합) | |
 | TC#34 | NFR#5 | 저장소 / `git ls-files` / `local.properties`, `.firebaserc`, `*.jks`, `google-services.json` 없음 | CI |
 | TC#35 | FR#8, FR#9, NFR#6 | 보호 시작 후 재부팅 / 첫 잠금 해제 / 서비스·상시 알림 자동 복구, 부모 화면 마지막 확인 갱신. 강제 종료 후 앱 열기 / 서비스·watchdog 복구 | (통합) |
@@ -388,7 +394,9 @@ stateDiagram-v2
 | TC#53 | S#10 | 멈춤 후 다른 앱 없이 같은 화면 숨김 / 세션 빌드 / 멈춘 시각에 닫음(1초 미만은 버림). 같은 앱 화면 전환 / 유지 | |
 | TC#54 | X#5 | 검색 결과·영상·로그인·경로 토큰 주소 / 정리 / 검색어·v 만 남김, 나머지 쿼리·조각 제거, 경로 토큰 가림. 주소창 / 추출 / 정리된 주소 | |
 | TC#55 | A#5, FR#16 | YouTube Shorts·일반 영상·'Shorts' 로 시작하는 일반 영상 제목·브라우저 Shorts 세션 / 집계 / Shorts 시간만 따로, YouTube 합계는 그대로. 기간 / 요약 / 기간 Shorts 합 | |
+| TC#56 | FR#13, D#6 | 자정을 넘는 세션 / 타임라인 나누기 / 날짜별 시작 순서, 자정에서 잘림. 세션 / 항목 키 / `{start}_{pkgKey}`, R#8 형식 | |
 | TC#57 | FR#16 | 기간 기록 / 막대 날짜 선택 / 그날 앱별 합계·총합·Shorts 만. 같은 날 다시 선택 / 전체 기간 | |
+| TC#58 | R#8 | 유효 timeline / 쓰기 / 허용. 날짜·항목 키 형식, 필수 필드(pkg·start·end) 누락, 길이 초과(pkg·title·url), 타입 불일치(start·end), 정의 외 필드, 날짜 노드에 숫자, 부모 쓰기 / 거부 | rules |
 
 ## 부록. 변경 이력
 
@@ -407,3 +415,4 @@ stateDiagram-v2
 | GH-36 | UC3 상세 수집: 미디어 제목·Shorts 제목(X#1b 규칙 실측 보정)·브라우저 주소, X#0 OS 수준 한정, X#4 병합, 선택 권한 안내, 상세 제한 활성 |
 | GH-39 | A#5 YouTube Shorts 시청 시간 (dailyShorts, 기간 탭 '이 중 Shorts') |
 | GH-43 | 자녀 상세 탭 [실시간 \| 7일 \| 30일] 스와이프, 막대 날짜 선택 시 그날 앱별 합계, 기기 제거를 자녀 목록 카드 메뉴로 |
+| GH-37 | UC3 타임라인: 업로드(D#6 키, A#3 덮어쓰기), R#8, 자녀 상세 [타임라인] 탭(하루치 구독), 부모 구독을 필요한 노드로 나눔(D#7) |

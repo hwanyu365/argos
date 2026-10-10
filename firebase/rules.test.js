@@ -303,6 +303,60 @@ describe("TC#52 일별 사용 시간 형식 검증", () => {
   });
 });
 
+describe("TC#58 타임라인 형식 검증", () => {
+  const base = () => db("kidX").ref(`families/${FID}/children/kidX`);
+  const KEY = "1791565016343_com,google,android,youtube";
+  const item = (extra = {}) => ({ pkg: "com.google.android.youtube", start: 1791565016343, end: 1791565020000, ...extra });
+  const day = (v) => base().child("timeline/2026-10-10").set(v);
+
+  test("하루치 세션 목록을 쓸 수 있다 (title·url 은 선택)", async () => {
+    await seed(withKids());
+    await assertSucceeds(day({ [KEY]: item({ title: "영상", url: "youtube.com/watch?v=x" }), "1_com,kakao,talk": item({ pkg: "com.kakao.talk" }) }));
+  });
+
+  test("날짜 키·항목 키 형식이 아니면 거부한다", async () => {
+    await seed(withKids());
+    await assertFails(base().child("timeline/20261010").set({ [KEY]: item() }));
+    await assertFails(day(5));
+    await assertFails(day({ abc: item() }));
+    await assertFails(day({ "1_a b": item() }));
+    await assertFails(day({ ["1".repeat(16) + "_a"]: item() }));
+    await assertFails(day({ ["1_" + "a".repeat(256)]: item() }));
+  });
+
+  test("pkg·start·end 는 필수다", async () => {
+    await seed(withKids());
+    for (const f of ["pkg", "start", "end"]) {
+      const v = item();
+      delete v[f];
+      await assertFails(day({ [KEY]: v }));
+    }
+  });
+
+  test("길이·타입·정의 외 필드를 거부한다", async () => {
+    await seed(withKids());
+    await assertFails(day({ [KEY]: item({ pkg: "a".repeat(256) }) }));
+    await assertFails(day({ [KEY]: item({ pkg: 1 }) }));
+    await assertFails(day({ [KEY]: item({ start: "1" }) }));
+    await assertFails(day({ [KEY]: item({ end: "1" }) }));
+    await assertFails(day({ [KEY]: item({ title: "a".repeat(301) }) }));
+    await assertFails(day({ [KEY]: item({ title: 1 }) }));
+    await assertFails(day({ [KEY]: item({ url: "a".repeat(2049) }) }));
+    await assertFails(day({ [KEY]: item({ url: 1 }) }));
+    await assertFails(day({ [KEY]: item({ x: 1 }) }));
+    await assertSucceeds(day({ [KEY]: item({ title: "a".repeat(300), url: "a".repeat(2048) }) }));
+  });
+
+  test("부모는 하루치 타임라인과 가족 하위 노드를 따로 읽을 수 있고 쓸 수 없다 (D#7)", async () => {
+    await seed(withKids());
+    await assertSucceeds(db("parent1").ref(`families/${FID}/children/kidX/timeline/2026-10-10`).get());
+    await assertSucceeds(db("parent1").ref(`families/${FID}/members`).get());
+    await assertSucceeds(db("parent1").ref(`families/${FID}/apps`).get());
+    await assertFails(db("outsider").ref(`families/${FID}/children/kidX/timeline/2026-10-10`).get());
+    await assertFails(db("parent1").ref(`families/${FID}/children/kidX/timeline/2026-10-10`).set({ [KEY]: item() }));
+  });
+});
+
 describe("TC#10 기기 제거", () => {
   test("부모가 자녀를 제거하면 이후 그 자녀는 쓰기·읽기가 거부된다", async () => {
     await seed(withKids());
