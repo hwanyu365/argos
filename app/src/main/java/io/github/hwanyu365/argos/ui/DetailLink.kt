@@ -35,7 +35,8 @@ object DetailLink {
         val full = if (SCHEME.containsMatchIn(url)) url else "https://$url"
         val uri = runCatching { URI(full) }.getOrNull() ?: return null
         val scheme = uri.scheme?.lowercase()
-        if (scheme !in setOf("http", "https") || uri.host.isNullOrEmpty()) return null
+        // userinfo(`신뢰할 이름@실제 호스트`)는 확인 창에서 호스트를 착각하게 하므로 열지 않는다.
+        if (scheme !in setOf("http", "https") || uri.host.isNullOrEmpty() || uri.rawUserInfo != null) return null
         // 인텐트 해석은 스킴 대소문자를 구분하므로 소문자로 맞춘다.
         return scheme + full.substring(scheme!!.length)
     }

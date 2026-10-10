@@ -24,9 +24,12 @@ class DetailLinkTest {
         assertNull(DetailLink.of(chrome, null, "javascript:alert(1)"))
         assertNull(DetailLink.of(chrome, null, "a b.com"))
         assertNull(DetailLink.of(chrome, null, "/path/only"))
-        assertNull(DetailLink.of(chrome, null, "evil.com/‮moc.elgoog"))
-        assertNull(DetailLink.of(chrome, null, "evil.com/​x"))
-        assertNull(DetailLink.of(chrome, null, "evil.com/ x"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/\u202Emoc.elgoog"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/\u200Bx"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/\u2028x"))
+        assertNull(DetailLink.of(chrome, null, "evil.com/\u061Cx"))
+        // userinfo 로 신뢰할 만한 이름을 앞에 붙여 실제 호스트를 숨길 수 있다.
+        assertNull(DetailLink.of(chrome, null, "https://google.com@evil.com/x"))
         assertNull(DetailLink.of(chrome, "제목", null))
     }
 
