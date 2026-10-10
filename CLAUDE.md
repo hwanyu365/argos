@@ -89,6 +89,7 @@ npm --prefix firebase test # 보안 규칙 (Firebase Emulator)
 흐름:
 
 - 하위 이슈가 끝나면 묻지 않고 커밋 → draft PR → CI·Claude 리뷰 반영 → ready → squash merge
+- squash merge 는 `gh pr merge --squash --subject "<PR 제목>" --body "<최종 결과 기준 [ISSUE]/[DESC]>"` 로 메시지를 직접 지정한다 → 기본값은 PR 의 커밋 메시지를 이어 붙여 중간 상태가 남는다
 - 보고는 상위 이슈(UC) 단위로 한다
 - 먼저 묻는 예외
   - 스펙에 없는 결정
