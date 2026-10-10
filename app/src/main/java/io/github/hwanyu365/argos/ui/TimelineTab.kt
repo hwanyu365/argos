@@ -40,7 +40,7 @@ private val CLOCK = DateTimeFormatter.ofPattern("HH:mm")
 
 /** FR#17: 고른 날의 세션을 시작 순으로 보여준다. 날짜는 오늘부터 보관 기간 안에서 옮긴다. */
 @Composable
-internal fun TimelineTab(repo: FamilyRepository, fid: String, uid: String, apps: Map<String, String>) {
+internal fun TimelineTab(repo: FamilyRepository, fid: String, uid: String, apps: Map<String, String>, onLink: (String) -> Unit) {
     val today = LocalDate.now()
     var date by remember { mutableStateOf(today) }
     // 구독 오류를 빈 기록으로 바꾸면 '사용하지 않음'으로 오해되므로 따로 표시한다.
@@ -66,7 +66,7 @@ internal fun TimelineTab(repo: FamilyRepository, fid: String, uid: String, apps:
             rows.isEmpty() -> Text(stringResource(R.string.timeline_empty), style = MaterialTheme.typography.bodyLarge)
             else -> LazyColumn {
                 items(rows, key = { it.key }) { row ->
-                    TimelineItem(row)
+                    TimelineItem(row, onLink)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
@@ -75,14 +75,14 @@ internal fun TimelineTab(repo: FamilyRepository, fid: String, uid: String, apps:
 }
 
 @Composable
-private fun TimelineItem(row: TimelineRow) {
+private fun TimelineItem(row: TimelineRow, onLink: (String) -> Unit) {
     val zone = ZoneId.systemDefault()
     fun clock(ms: Long) = Instant.ofEpochMilli(ms).atZone(zone).format(CLOCK)
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("${clock(row.start)}\n${clock(row.end)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(44.dp))
         Column(Modifier.weight(1f)) {
             Text(row.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            row.detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            row.detail?.let { DetailText(it, row.link, onLink, MaterialTheme.typography.bodySmall) }
         }
         Text(formatDuration(row.durationMs, stringResource(R.string.unit_sec), stringResource(R.string.unit_min), stringResource(R.string.unit_hour)), style = MaterialTheme.typography.bodyMedium)
     }

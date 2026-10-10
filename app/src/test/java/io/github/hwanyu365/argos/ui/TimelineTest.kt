@@ -20,6 +20,7 @@ class TimelineTest {
     fun `TC#32 상세는 제목을 우선하고 없으면 주소를 쓴다`() {
         val rows = TimelineRow.of(listOf(Session("c", 0, 1_000, url = "a.com"), Session("d", 2_000, 3_000, title = "t", url = "b.com")), emptyMap())
         assertEquals(listOf("a.com", "t"), rows.map { it.detail })
+        assertEquals(listOf("https://a.com", "https://b.com"), rows.map { it.link })
     }
 
     @Test
