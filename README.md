@@ -58,6 +58,8 @@
      ```sh
      adb install argos.apk
      adb shell appops set io.github.hwanyu365.argos GET_USAGE_STATS allow
+     # 제한된 설정 허용: 없으면 adb 로 켠 접근성이 재부팅 때 꺼진다
+     adb shell cmd appops set io.github.hwanyu365.argos ACCESS_RESTRICTED_SETTINGS allow
      # 선택: 영상 제목·웹 주소 (기존 접근성 서비스가 있으면 ':' 로 이어 붙인다)
      adb shell settings put secure enabled_accessibility_services io.github.hwanyu365.argos/io.github.hwanyu365.argos.child.UrlAccessibilityService
      adb shell cmd notification allow_listener io.github.hwanyu365.argos/io.github.hwanyu365.argos.child.MediaListenerService
