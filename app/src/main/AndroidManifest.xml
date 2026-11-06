@@ -17,6 +17,10 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
     </queries>
     <!-- 사이드로드 전용 앱이라 Play 정책 대상이 아니다. 감시가 끊기면 기록이 비므로 필수 권한이다 (FR#7). -->
     <uses-permission
