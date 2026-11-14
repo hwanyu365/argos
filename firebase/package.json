@@ -9,5 +9,16 @@
     "@firebase/rules-unit-testing": "^6.0.0",
     "firebase": "^13.2.0",
     "firebase-tools": "^15.35.0"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "^1.13.6"
+    },
+    "glob": {
+      "minimatch": "^11.0.1"
+    },
+    "gaxios": {
+      "uuid": "^11.1.1"
+    }
   }
 }
