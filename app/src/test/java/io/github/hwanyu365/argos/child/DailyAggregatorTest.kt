@@ -92,6 +92,11 @@ class DailyAggregatorTest {
     }
 
     @Test
+    fun `TC#26 마지막으로 올린 날이 오늘보다 뒤면 오늘만 올린다`() {
+        assertEquals(listOf(day(10)), DailyAggregator.uploadDays(lastUploaded = day(12), earliest = day(1), today = day(10)))
+    }
+
+    @Test
     fun `TC#26 처음 올릴 때는 가장 오래된 기록부터, 보관 기간을 넘지 않게 올린다`() {
         assertEquals(listOf(day(9), day(10)), DailyAggregator.uploadDays(lastUploaded = null, earliest = day(9), today = day(10)))
         val today = LocalDate.of(2026, 12, 31)

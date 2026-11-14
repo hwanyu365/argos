@@ -14,10 +14,10 @@ class UrlAccessibilityService : AccessibilityService() {
         val pkg = event?.packageName?.toString() ?: return
         if (pkg !in DetailExtractor.WATCHED_PACKAGES) return
         val root = rootInActiveWindow ?: return
-        // 활성 창이 이벤트를 낸 앱이 아니면(알림창·팝업 등) 다른 화면을 읽게 되므로 건너뛴다 (X#0).
-        if (root.packageName?.toString() != pkg) return
         val tree = A11yTree(root)
         try {
+            // 활성 창이 이벤트를 낸 앱이 아니면(알림창·팝업 등) 다른 화면을 읽게 되므로 건너뛴다 (X#0).
+            if (root.packageName?.toString() != pkg) return
             ScreenDetail.update(pkg, DetailExtractor.fromScreen(pkg, tree.root))
         } finally {
             tree.recycle()
