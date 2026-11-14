@@ -8,7 +8,11 @@ captures/
 .idea/
 .kotlin/
 
-# 비공개 설정 — 절대 커밋하지 않는다 (spec NFR#5)
+# 비공개 설정 — 절대 커밋하지 않는다 (spec NFR#5). .github/secret-files.regex 와 같은 목록을 유지한다
+.env
+.env.*
+!.env.example
+*.pem
 local.properties
 .firebaserc
 google-services.json
@@ -21,6 +25,7 @@ node_modules/
 *-debug.log
 
 # 로컬 도구 상태
+.adk/
 .omc/
 .claude/settings.local.json
 

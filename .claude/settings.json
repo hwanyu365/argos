@@ -1,9 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew:*)",
-      "Bash(npm --prefix firebase test:*)",
-      "Bash(npm --prefix firebase ci:*)",
+      "Bash(./gradlew check --console=plain)",
+      "Bash(npm --prefix firebase test)",
+      "Bash(sh .claude/hooks/verify.sh)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -14,7 +14,77 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr checks:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git switch:*)",
+      "Bash(git worktree add:*)",
+      "Bash(gh pr create --draft:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh pr ready:*)",
+      "Bash(gh pr merge --squash:*)",
+      "Bash(git worktree remove:*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Read(*.pem)",
+      "Read(*.jks)",
+      "Read(*.keystore)",
+      "Read(service-account*.json)",
+      "Read(local.properties)",
+      "Read(.firebaserc)",
+      "Read(google-services.json)",
+      "Bash(git *--no-veri*)",
+      "Bash(git commit -n*)",
+      "Bash(git commit * -n *)",
+      "Bash(git commit * -n)",
+      "Bash(git * commit -n*)",
+      "Bash(git * commit * -n *)",
+      "Bash(git * commit * -n)",
+      "Bash(*hooksPath*)",
+      "Bash(*hookspath*)",
+      "Bash(*HOOKSPATH*)",
+      "Bash(*GIT_CONFIG*)",
+      "Bash(git *commit-tree*)",
+      "Bash(git *hash-object*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && sh .claude/hooks/hooks-path.sh 2>&1 || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "onFailure": "block",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && sh .claude/hooks/hooks-path.sh --check"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git * commit*)",
+            "onFailure": "block",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && sh .claude/hooks/hooks-path.sh --check"
+          },
+          {
+            "type": "command",
+            "onFailure": "block",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/merge-gate.sh\""
+          }
+        ]
+      }
     ]
   }
 }

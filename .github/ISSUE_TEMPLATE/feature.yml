@@ -1,6 +1,6 @@
 name: 기능 요청
 description: 새 기능 또는 기능 변경
-labels: [feat]
+labels: [enhancement]
 body:
   - type: textarea
     id: story
@@ -15,7 +15,7 @@ body:
     attributes:
       label: 인수 조건 (Given / When / Then)
       description: 실패 경로도 함께 적는다. 그대로 TC 가 된다.
-      value: |
+      placeholder: |
         Given
         When
         Then
@@ -25,7 +25,7 @@ body:
     id: spec
     attributes:
       label: 관련 스펙
-      description: docs/specification.md 의 관련 ID (FR#, NFR#, §)
+      description: docs/ 스펙의 관련 ID (FR#, NFR#, §)
   - type: textarea
     id: notes
     attributes:

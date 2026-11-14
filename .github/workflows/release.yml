@@ -4,20 +4,33 @@ on:
   push:
     tags: ["v*"]
 
-# public 저장소의 Release·artifact 는 누구나 받을 수 있어, APK 는 Firebase App Distribution 테스터에게만 배포한다 (GH-11).
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+      # 쓰기 토큰이 git 설정에 남으면 빌드 스크립트가 읽을 수 있다. gh 는 GH_TOKEN 으로 동작한다.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - run: npm --prefix firebase ci
+      - run: |
+          ./gradlew check --console=plain
+          npm --prefix firebase test
+      # 산출물 빌드·서명·배포는 스택마다 다르다. 비밀값은 Secrets 로만 넣고, 로그에 값이나 다운로드 URL 이 찍히지 않게 한다.
+      # public 저장소의 Release 첨부물은 누구나 받을 수 있다 → APK 는 Release 에 첨부하지 않고 Firebase App Distribution 테스터에게만 배포한다.
       - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -36,14 +49,8 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew check assembleRelease --console=plain
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: firebase/package-lock.json
-      - run: npm --prefix firebase ci
-      - uses: google-github-actions/auth@v3
+        run: ./gradlew assembleRelease --console=plain
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Distribute to testers
@@ -57,3 +64,6 @@ jobs:
         run: |
           git log -1 --format='%s' > notes.txt
           npm --prefix firebase exec -- firebase appdistribution:distribute app/build/outputs/apk/release/app-release.apk --app "$APP_ID" --groups "$TESTER_GROUPS" --release-notes-file notes.txt 2>&1 | { grep -v 'https\?://' || true; }
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag

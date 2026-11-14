@@ -1,20 +1,24 @@
 version: 2
 updates:
+  # 월 1회, 생태계마다 PR 하나로 묶는다 → 버전 따라가기는 merge 부담을 줄이고, 취약점은 보안 업데이트가 따로 바로 올린다.
   - package-ecosystem: gradle
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       gradle:
         patterns: ["*"]
   - package-ecosystem: npm
     directory: /firebase
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       npm:
         patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
