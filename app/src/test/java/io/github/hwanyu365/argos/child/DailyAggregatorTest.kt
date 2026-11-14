@@ -25,6 +25,14 @@ class DailyAggregatorTest {
     }
 
     @Test
+    fun `TC#21 날짜 키는 UTC 가 아니라 자녀 기기 시간대의 날짜다`() {
+        val start = ZonedDateTime.of(2026, 10, 9, 15, 30, 0, 0, ZoneId.of("UTC")).toInstant().toEpochMilli()
+        val days = DailyAggregator.aggregate(listOf(Session("yt", start, start + 600_000)), kst)
+        assertEquals(setOf(day(10)), days.keys)
+        assertEquals(setOf(day(10)), DailyAggregator.timeline(listOf(Session("yt", start, start + 600_000)), kst).keys)
+    }
+
+    @Test
     fun `TC#19 같은 입력이면 다시 계산해도 같은 값이다 (덮어쓰기 업로드)`() {
         val sessions = listOf(Session("a", t(10, 9, 0), t(10, 9, 10)))
         assertEquals(DailyAggregator.aggregate(sessions, kst), DailyAggregator.aggregate(sessions, kst))
