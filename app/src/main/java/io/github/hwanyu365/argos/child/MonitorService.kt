@@ -114,9 +114,7 @@ class MonitorService : Service() {
             builder = restoredBuilder()
             throw e
         }
-        prefs.lastEventTs = builder.lastEventTs
-        prefs.openSession = builder.current
-        prefs.pip = builder.pip
+        prefs.saveCursor(builder.lastEventTs, builder.current, builder.pip)
 
         val open = builder.current
         val pip = builder.visiblePip(now)?.let { LivePip(it.pkg, device.label(it.pkg), it.start) }
@@ -188,13 +186,11 @@ class MonitorService : Service() {
 
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
     private fun pruneRemote(child: DatabaseReference, cutoff: LocalDate) {
-        listOf("daily", "dailyTotal", "dailyShorts", "timeline").forEach { node ->
-            child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap ->
-                val old = snap.children.mapNotNull { it.key }.associate { "$node/$it" to null }
-                // 성공했을 때만 기준일을 기록해, 실패하면 다음 업로드 때 다시 정리한다.
-                if (old.isEmpty()) lastPruneCutoff = cutoff else child.updateChildren(old).addOnSuccessListener { lastPruneCutoff = cutoff }
-            }
-        }
+        RemotePrune.run(
+            listOf("daily", "dailyTotal", "dailyShorts", "timeline"),
+            fetchOldKeys = { node, onKeys -> child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap -> onKeys(snap.children.mapNotNull { it.key }) } },
+            remove = { update, onDone -> child.updateChildren(update).addOnSuccessListener { onDone() } }
+        ) { lastPruneCutoff = cutoff }
     }
 
     /** 페어링 전이거나 Firebase 미설정이면 로컬 수집만 한다. */

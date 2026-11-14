@@ -35,7 +35,7 @@ object DailyAggregator {
 
     /** A#3: 올린 날은 다시 올려도 같은 값이므로, 실패했을 수 있는 마지막 날부터 오늘까지 다시 올린다. */
     fun uploadDays(lastUploaded: LocalDate?, earliest: LocalDate?, today: LocalDate): List<LocalDate> {
-        val from = maxOf(lastUploaded ?: earliest ?: today, today.minusDays(RETENTION_DAYS - 1))
+        val from = maxOf(lastUploaded ?: earliest ?: today, today.minusDays(RETENTION_DAYS - 1)).coerceAtMost(today)
         return generateSequence(from) { it.plusDays(1) }.takeWhile { !it.isAfter(today) }.toList()
     }
 
