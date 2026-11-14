@@ -186,14 +186,11 @@ class MonitorService : Service() {
 
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
     private fun pruneRemote(child: DatabaseReference, cutoff: LocalDate) {
-        val nodes = listOf("daily", "dailyTotal", "dailyShorts", "timeline")
-        val all = AllSucceeded(nodes.size) { lastPruneCutoff = cutoff }
-        nodes.forEach { node ->
-            child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap ->
-                val old = snap.children.mapNotNull { it.key }.associate { "$node/$it" to null }
-                if (old.isEmpty()) all.succeeded() else child.updateChildren(old).addOnSuccessListener { all.succeeded() }
-            }
-        }
+        RemotePrune.run(
+            listOf("daily", "dailyTotal", "dailyShorts", "timeline"),
+            fetchOldKeys = { node, onKeys -> child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap -> onKeys(snap.children.mapNotNull { it.key }) } },
+            remove = { update, onDone -> child.updateChildren(update).addOnSuccessListener { onDone() } }
+        ) { lastPruneCutoff = cutoff }
     }
 
     /** 페어링 전이거나 Firebase 미설정이면 로컬 수집만 한다. */
