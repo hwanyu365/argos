@@ -357,7 +357,7 @@ stateDiagram-v2
 | --- | --- | --- | --- |
 | TC#1 | FR#1 | 가족 없음 / 앱 실행 / 시작 화면. 역할·가족 저장 후 재실행 / 보호자는 자녀 목록, 자녀는 보호 시작 여부에 따라 권한 안내 또는 보호 상태 | |
 | TC#2 | FR#2, §4.4 | 설정값 하나가 비어 있음 / 앱 실행 / 미설정 안내 화면, Firebase 초기화 호출 없음 | |
-| TC#3 | §4.4 | local.properties 와 환경변수에 다른 값 / 빌드 / local.properties 값이 주입됨 | Gradle 로직 |
+| TC#3 | NFR#5, §4.4 | local.properties 와 환경변수에 다른 값 / 빌드 / local.properties 값이 주입됨, local.properties 에 없는 키는 환경변수 값 | (수동) 2026-11-14 통과. `generateDebugBuildConfig` 뒤 생성된 BuildConfig 확인 |
 | TC#4 | FR#3, R#2 | 없는 가족 / 부모가 생성 / 생성자가 parent 멤버로 등록. 멤버 있는 가족·데이터만 남은 가족 / 코드 없이 부모 등록 / 거부 | rules |
 | TC#5 | FR#4, D#4 | 부모 멤버 / 코드 발급 / 10자리 Crockford Base32, expiresAt = now+10분 | |
 | TC#6 | FR#5, R#2 | 유효 코드 / 자녀가 참여 / child 멤버 등록. 만료·타 가족 코드, 코드와 다른 role, 기존 멤버 수정, name 0·41자, 클라이언트 joinedAt / 참여 / 거부 | rules |
