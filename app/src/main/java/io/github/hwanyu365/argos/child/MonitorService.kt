@@ -52,7 +52,7 @@ class MonitorService : Service() {
     private val labeledApps = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private var lastDailyAt = 0L
     private var lastDailyDate: LocalDate? = null
-    private var lastPruneCutoff: LocalDate? = null
+    private val remotePrune = RemotePrune(listOf("daily", "dailyTotal", "dailyShorts", "timeline"))
 
     // 화면이 꺼지면 tick 이 60초 간격이 되므로, 켜지는 즉시 3초 폴링으로 되돌린다 (NFR#2).
     private val screenOnReceiver = object : BroadcastReceiver() {
@@ -171,8 +171,7 @@ class MonitorService : Service() {
                 labeledApps.removeAll(newLabels.toSet())
                 Log.w(TAG, "daily upload failed", it)
             }
-        // 기준일은 하루에 한 번 바뀌므로 그때만 원격을 조회해 정리한다 (다운로드 한도 절약).
-        if (cutoff != lastPruneCutoff) pruneRemote(family.child("children/$uid"), cutoff)
+        pruneRemote(family.child("children/$uid"), cutoff)
     }
 
     // R#8 길이 상한을 넘으면 그날 타임라인 전체가 거부되므로 미리 자른다. 없는 값은 키를 빼야 규칙의 문자열 검사를 통과한다.
@@ -186,11 +185,15 @@ class MonitorService : Service() {
 
     /** FR#14: 원격의 보관 기간이 지난 날짜를 지운다. 날짜 키는 사전순이 곧 날짜순이다. */
     private fun pruneRemote(child: DatabaseReference, cutoff: LocalDate) {
-        RemotePrune.run(
-            listOf("daily", "dailyTotal", "dailyShorts", "timeline"),
-            fetchOldKeys = { node, onKeys -> child.child(node).orderByKey().endBefore(cutoff.toString()).get().addOnSuccessListener { snap -> onKeys(snap.children.mapNotNull { it.key }) } },
-            remove = { update, onDone -> child.updateChildren(update).addOnSuccessListener { onDone() } }
-        ) { lastPruneCutoff = cutoff }
+        remotePrune.start(
+            cutoff,
+            fetchOldKeys = { node, onKeys ->
+                child.child(node).orderByKey().endBefore(cutoff.toString()).get()
+                    .addOnSuccessListener { snap -> onKeys(snap.children.mapNotNull { it.key }) }
+                    .addOnFailureListener { Log.w(TAG, "prune fetch failed: $node", it) }
+            },
+            remove = { update -> child.updateChildren(update).addOnFailureListener { Log.w(TAG, "prune remove failed", it) } }
+        )
     }
 
     /** 페어링 전이거나 Firebase 미설정이면 로컬 수집만 한다. */
